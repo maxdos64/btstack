@@ -350,8 +350,11 @@ def create_event_factory(events, subevents, defines):
         fout.write(event_factory_template.format(defines_text, cases, subcases))
 
 # find root
-btstack_root = os.path.abspath(os.path.dirname(sys.argv[0]) + '/..')
-gen_path = btstack_root + '/platform/daemon/binding/python/btstack/'
+if len(sys.argv) == 2:
+    gen_path = sys.argv[1]
+else:
+    btstack_root = os.path.abspath(os.path.dirname(sys.argv[0]) + '/..')
+    gen_path = btstack_root + '/platform/daemon/binding/python/btstack/'
 
 
 # read defines from hci_cmds.h and hci.h
