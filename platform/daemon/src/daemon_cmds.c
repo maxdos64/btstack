@@ -312,6 +312,13 @@ OPCODE(OGF_BTSTACK, GAP_LE_CONNECT_CANCEL), ""
 };
 
 /**
+ * @param io_capability
+ */
+const hci_cmd_t gap_ssp_set_io_capability_cmd = {
+OPCODE(OGF_BTSTACK, GAP_SSP_SET_IO_CAPABILITY), "1"
+};
+
+/**
  * @param handle
  */
 const hci_cmd_t gatt_discover_primary_services_cmd = {

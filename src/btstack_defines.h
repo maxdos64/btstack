@@ -206,9 +206,10 @@ typedef uint8_t sm_key_t[16];
 #define RFCOMM_CREATE_CHANNEL_WITH_CREDITS   0x47
 #define RFCOMM_REGISTER_SERVICE_WITH_CREDITS 0x48
 #define RFCOMM_GRANT_CREDITS                 0x49
-    
+
 // GAP Classic 0x50
 #define GAP_DISCONNECT              0x50
+#define GAP_SSP_SET_IO_CAPABILITY   0x51
 
 // GAP LE      0x60  
 #define GAP_LE_SCAN_START           0x60

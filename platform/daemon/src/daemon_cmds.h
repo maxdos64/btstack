@@ -1,4 +1,4 @@
-/*
+ /*
  * Copyright (C) 2014 BlueKitchen GmbH
  *
  * Redistribution and use in source and binary forms, with or without
@@ -50,7 +50,7 @@
 #if defined __cplusplus
 extern "C" {
 #endif
-    
+
 extern const hci_cmd_t btstack_get_state;
 extern const hci_cmd_t btstack_set_power_mode;
 extern const hci_cmd_t btstack_set_acl_capture_mode;
@@ -99,6 +99,9 @@ extern const hci_cmd_t gap_le_scan_stop;
 extern const hci_cmd_t gap_le_set_scan_parameters;
 extern const hci_cmd_t gap_le_connect_cmd;
 extern const hci_cmd_t gap_le_connect_cancel_cmd;
+
+extern const hci_cmd_t gap_ssp_set_io_capability_cmd;
+
 extern const hci_cmd_t gatt_discover_primary_services_cmd;
 
 extern const hci_cmd_t gatt_discover_primary_services_by_uuid16_cmd;
