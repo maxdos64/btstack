@@ -208,8 +208,11 @@ typedef uint8_t sm_key_t[16];
 #define RFCOMM_GRANT_CREDITS                 0x49
 
 // GAP Classic 0x50
-#define GAP_DISCONNECT              0x50
-#define GAP_SSP_SET_IO_CAPABILITY   0x51
+#define GAP_DISCONNECT                         0x50
+#define GAP_SSP_SET_IO_CAPABILITY              0x51
+#define GAP_SSP_SET_AUTHENTICATION_REQUIREMENT 0x52
+#define GAP_SSP_SET_AUTO_ACCEPT                0x53
+#define GAP_SET_LOCAL_NAME                     0x54
 
 // GAP LE      0x60  
 #define GAP_LE_SCAN_START           0x60

@@ -101,9 +101,12 @@ extern const hci_cmd_t gap_le_connect_cmd;
 extern const hci_cmd_t gap_le_connect_cancel_cmd;
 
 extern const hci_cmd_t gap_ssp_set_io_capability_cmd;
+extern const hci_cmd_t gap_ssp_set_authentication_requirement_cmd;
+extern const hci_cmd_t gap_ssp_set_auto_accept_cmd;
+
+extern const hci_cmd_t gap_set_local_name_cmd;
 
 extern const hci_cmd_t gatt_discover_primary_services_cmd;
-
 extern const hci_cmd_t gatt_discover_primary_services_by_uuid16_cmd;
 extern const hci_cmd_t gatt_discover_primary_services_by_uuid128_cmd;
 extern const hci_cmd_t gatt_find_included_services_for_service_cmd;

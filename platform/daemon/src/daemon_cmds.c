@@ -319,6 +319,35 @@ OPCODE(OGF_BTSTACK, GAP_SSP_SET_IO_CAPABILITY), "1"
 };
 
 /**
+ * @param boolean
+ */
+const hci_cmd_t gap_ssp_set_authentication_requirement_cmd = {
+OPCODE(OGF_BTSTACK, GAP_SSP_SET_AUTHENTICATION_REQUIREMENT), "1"
+};
+
+/**
+ * @param boolean
+ */
+const hci_cmd_t gap_ssp_set_auto_accept_cmd = {
+OPCODE(OGF_BTSTACK, GAP_SSP_SET_AUTO_ACCEPT), "1"
+};
+
+/**
+ * @brief Confirm value from SSP_CONFIRMATION_REQUEST for Numeric Comparison bonding 
+ * @param bd_addr (48)
+ */
+const hci_cmd_t gap_ssp_confirmation_response_cmd = {
+	OPCODE(OGF_BTSTACK, GAP_SSP_CONFIRMATION_RESPONSE), "B"
+};
+
+/**
+ * @param local_name
+ */
+const hci_cmd_t gap_set_local_name_cmd = {
+OPCODE(OGF_BTSTACK, GAP_SET_LOCAL_NAME), "N"
+};
+
+/**
  * @param handle
  */
 const hci_cmd_t gatt_discover_primary_services_cmd = {
@@ -330,7 +359,7 @@ OPCODE(OGF_BTSTACK, GATT_DISCOVER_ALL_PRIMARY_SERVICES), "H"
  * @param uuid16
  */
 const hci_cmd_t gatt_discover_primary_services_by_uuid16_cmd = {
-    OPCODE(OGF_BTSTACK, GATT_DISCOVER_PRIMARY_SERVICES_BY_UUID16), "H2"
+	OPCODE(OGF_BTSTACK, GATT_DISCOVER_PRIMARY_SERVICES_BY_UUID16), "H2"
 };
 
 /**
