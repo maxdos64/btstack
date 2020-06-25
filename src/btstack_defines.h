@@ -212,7 +212,14 @@ typedef uint8_t sm_key_t[16];
 #define GAP_SSP_SET_IO_CAPABILITY              0x51
 #define GAP_SSP_SET_AUTHENTICATION_REQUIREMENT 0x52
 #define GAP_SSP_SET_AUTO_ACCEPT                0x53
-#define GAP_SET_LOCAL_NAME                     0x54
+#define GAP_SSP_CONFIRMATION_RESPONSE          0x54
+#define GAP_SSP_CONFIRMATION_NEGATIVE          0x55
+#define GAP_SSP_PASSKEY_RESPONSE               0x56
+#define GAP_CONNECTABLE_CONTROL               0x5b
+#define GAP_SET_LOCAL_NAME                     0x5c
+#define GAP_DELETE_ALL_LINK_KEYS               0x5d
+#define GAP_INQUIRY_START                      0x5e
+#define GAP_INQUIRY_STOP                       0x5f
 
 // GAP LE      0x60  
 #define GAP_LE_SCAN_START           0x60

@@ -341,10 +341,55 @@ const hci_cmd_t gap_ssp_confirmation_response_cmd = {
 };
 
 /**
+ * @brief Reject value from SSP_CONFIRMATION_REQUEST for Numeric Comparison bonding 
+ * @param bd_addr (48)
+ */
+const hci_cmd_t gap_ssp_confirmation_negative_cmd = {
+	OPCODE(OGF_BTSTACK, GAP_SSP_CONFIRMATION_NEGATIVE), "B"
+};
+
+/**
+ * @brief Reports passkey input by user
+ * @param bd_addr (48)
+ * @param passkey in [0..999999]
+ */
+const hci_cmd_t gap_ssp_passkey_response_cmd = {
+    OPCODE(OGF_BTSTACK, GAP_SSP_PASSKEY_RESPONSE), "B4"
+};
+
+/**
  * @param local_name
  */
 const hci_cmd_t gap_set_local_name_cmd = {
 OPCODE(OGF_BTSTACK, GAP_SET_LOCAL_NAME), "N"
+};
+
+/**
+ *
+ */
+const hci_cmd_t gap_delete_all_link_keys_cmd = {
+OPCODE(OGF_BTSTACK, GAP_DELETE_ALL_LINK_KEYS), ""
+};
+
+/**
+ * @param inquiry_interval
+ */
+const hci_cmd_t gap_inquiry_start_cmd = {
+OPCODE(OGF_BTSTACK, GAP_INQUIRY_START), "1"
+};
+
+/**
+ *
+ */
+const hci_cmd_t gap_inquiry_stop_cmd = {
+OPCODE(OGF_BTSTACK, GAP_INQUIRY_STOP), ""
+};
+
+/**
+ * @param boolean
+ */
+const hci_cmd_t gap_connectable_control_cmd = {
+OPCODE(OGF_BTSTACK, GAP_CONNECTABLE_CONTROL), "1"
 };
 
 /**
