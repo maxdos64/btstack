@@ -552,6 +552,7 @@ int socket_connection_create_launchd(void){
  * set packet handler for all auto-accepted connections 
  */
 void socket_connection_register_packet_callback( int (*packet_callback)(connection_t *connection, uint16_t packet_type, uint16_t channel, uint8_t *data, uint16_t length) ){
+	printf("Registering packet callback \n");
     socket_connection_packet_callback = packet_callback;
 }
 

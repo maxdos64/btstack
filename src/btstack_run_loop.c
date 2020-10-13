@@ -53,6 +53,8 @@
 #include "btstack_config.h"
 
 static const btstack_run_loop_t * the_run_loop = NULL;
+uint64_t btstack_breakpoint_settings = 0;
+char *(*btstack_breakpoint_handler)(uint8_t breakpoint_id, char *data, size_t data_len);
 
 extern const btstack_run_loop_t btstack_run_loop_embedded;
 
@@ -198,4 +200,32 @@ void btstack_run_loop_init(const btstack_run_loop_t * run_loop){
     the_run_loop = run_loop;
     the_run_loop->init();
 }
+
+void btstack_set_breakpoint_handler(void *handler)
+{
+	btstack_breakpoint_handler = handler;
+}
+
+void btstack_set_breakpoint(uint8_t breakpoint_id)
+{
+	if(breakpoint_id >= 64)
+	{
+		printf("Invalid btstack breakpoint id received\n");
+		exit(0);
+	}
+	btstack_breakpoint_settings |= 1 << breakpoint_id;
+	printf("Changed breakpoint settings to %lx\n", btstack_breakpoint_settings);
+}
+
+void btstack_unset_breakpoint(uint8_t breakpoint_id)
+{
+	if(breakpoint_id >= 64)
+	{
+		printf("Invalid btstack breakpoint id received\n");
+		exit(0);
+	}
+	btstack_breakpoint_settings |= 1 << breakpoint_id;
+	btstack_breakpoint_settings ^= 1 << breakpoint_id;
+}
+
 

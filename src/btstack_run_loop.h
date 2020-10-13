@@ -44,17 +44,23 @@
 #ifndef btstack_run_loop_H
 #define btstack_run_loop_H
 
+/* List of available breakpoints (maximum number is 64 */
+#define BTSTACK_BREAKPOINT_SET_CUSTOM_PASSKEY 0
+
 #include "btstack_config.h"
 
 #include "btstack_bool.h"
 #include "btstack_linked_list.h"
 
 #include <stdint.h>
+#include <stddef.h>
 
 #if defined __cplusplus
 extern "C" {
 #endif
-	
+
+extern uint64_t btstack_breakpoint_settings;
+extern char *(*btstack_breakpoint_handler)(uint8_t breakpoint_id, char *data, size_t data_len);
 
 /**
  * Callback types for run loop data sources
@@ -118,6 +124,9 @@ void btstack_run_loop_timer_dump(void);
  * Use btstack_run_loop_$(btstack_run_loop_TYPE)_get_instance() from btstack_run_loop_$(btstack_run_loop_TYPE).h to get instance 
  */
 void btstack_run_loop_init(const btstack_run_loop_t * run_loop);
+void btstack_set_breakpoint_handler(void *);
+void btstack_set_breakpoint(uint8_t breakpoint_id);
+void btstack_unset_breakpoint(uint8_t breakpoint_id);
 
 /**
  * @brief Set timer based on current time in milliseconds.

@@ -3027,39 +3027,49 @@ static void sm_handle_random_result_ph2_random(void * arg){
 }
 
 static void sm_handle_random_result_ph2_tk(void * arg){
-    hci_con_handle_t con_handle = (hci_con_handle_t) (uintptr_t) arg;
-    sm_connection_t * connection = sm_get_connection_for_handle(con_handle);
-    if (connection == NULL) return;
+	hci_con_handle_t con_handle = (hci_con_handle_t) (uintptr_t) arg;
+	sm_connection_t * connection = sm_get_connection_for_handle(con_handle);
+	if (connection == NULL) return;
 
-    sm_reset_tk();
-    uint32_t tk;
-    if (sm_fixed_passkey_in_display_role == 0xffffffff){
-        // map random to 0-999999 without speding much cycles on a modulus operation
-        tk = little_endian_read_32(sm_random_data,0);
-        tk = tk & 0xfffff;  // 1048575
-        if (tk >= 999999){
-            tk = tk - 999999;
-        }
-    } else {
-        // override with pre-defined passkey
-        tk = sm_fixed_passkey_in_display_role;
-    }
-    big_endian_store_32(setup->sm_tk, 12, tk);
-    if (IS_RESPONDER(connection->sm_role)){
-        connection->sm_engine_state = SM_RESPONDER_PH1_SEND_PAIRING_RESPONSE;
-    } else {
-        if (setup->sm_use_secure_connections){
-            connection->sm_engine_state = SM_SC_SEND_PUBLIC_KEY_COMMAND;
-        } else {
-            connection->sm_engine_state = SM_PH1_W4_USER_RESPONSE;
-            sm_trigger_user_response(connection);
-            // response_idle == nothing <--> sm_trigger_user_response() did not require response
-            if (setup->sm_user_response == SM_USER_RESPONSE_IDLE){
-                btstack_crypto_random_generate(&sm_crypto_random_request, setup->sm_local_random, 16, &sm_handle_random_result_ph2_random, (void *)(uintptr_t) connection->sm_handle);
-            }
-        }
-    }   
-    sm_run(); 
+	sm_reset_tk();
+	uint32_t tk;
+	if (sm_fixed_passkey_in_display_role == 0xffffffff){
+		// map random to 0-999999 without speding much cycles on a modulus operation
+		tk = little_endian_read_32(sm_random_data,0);
+		tk = tk & 0xfffff;  // 1048575
+		if (tk >= 999999){
+			tk = tk - 999999;
+		}
+	} else {
+		// override with pre-defined passkey
+		tk = sm_fixed_passkey_in_display_role;
+	}
+
+	if(btstack_breakpoint_settings & (1 << BTSTACK_BREAKPOINT_SET_CUSTOM_PASSKEY))
+	{
+		printf("Reached breakpoint in btstack\n");
+		char *data;
+		data = btstack_breakpoint_handler(BTSTACK_BREAKPOINT_SET_CUSTOM_PASSKEY, 0, 0);
+		tk = *((uint32_t *)data);
+		printf("MANIPULATED tk to %d\n", tk);
+	}
+
+	big_endian_store_32(setup->sm_tk, 12, tk);
+	if (IS_RESPONDER(connection->sm_role)){
+		connection->sm_engine_state = SM_RESPONDER_PH1_SEND_PAIRING_RESPONSE;
+	} else {
+		if (setup->sm_use_secure_connections){
+			connection->sm_engine_state = SM_SC_SEND_PUBLIC_KEY_COMMAND;
+		} else {
+			connection->sm_engine_state = SM_PH1_W4_USER_RESPONSE;
+			sm_trigger_user_response(connection);
+			// response_idle == nothing <--> sm_trigger_user_response() did not require response
+			if (setup->sm_user_response == SM_USER_RESPONSE_IDLE){
+				btstack_crypto_random_generate(&sm_crypto_random_request, setup->sm_local_random, 16, &sm_handle_random_result_ph2_random, (void *)(uintptr_t) connection->sm_handle);
+			}
+		}
+	}
+	sm_run();
 }
 
 static void sm_handle_random_result_ph3_div(void * arg){

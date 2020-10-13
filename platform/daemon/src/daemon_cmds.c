@@ -296,11 +296,11 @@ OPCODE(OGF_BTSTACK, GAP_LE_SET_SCAN_PARAMETERS), "122"
 };
 
 /**
- * @param peer_address_type
  * @param peer_address
+ * @param peer_address_type
  */
 const hci_cmd_t gap_le_connect_cmd = {
-OPCODE(OGF_BTSTACK, GAP_LE_CONNECT), "1B"
+OPCODE(OGF_BTSTACK, GAP_LE_CONNECT), "B1"
 };
 
 /**
@@ -310,6 +310,39 @@ OPCODE(OGF_BTSTACK, GAP_LE_CONNECT), "1B"
 const hci_cmd_t gap_le_connect_cancel_cmd = {
 OPCODE(OGF_BTSTACK, GAP_LE_CONNECT_CANCEL), ""
 };
+
+
+/**
+ * @param adv_int_min
+ * @param adv_int_max
+ * @param adv_type
+ * @param direct_address_type
+ * @param direct_address
+ * @param channel_map
+ * @param filter_policy
+ * @note own_address_type is used from gap_random_address_set_mode
+ */
+const hci_cmd_t gap_le_advertisements_set_params_cmd = {
+OPCODE(OGF_BTSTACK, GAP_LE_ADVERTISEMENTS_SET_PARAMS), "2211B11"
+};
+
+/**
+ * @param advertising_data_length
+ * @param advertising_data (max 31 octets)
+ * @note '00:00:00:00:00:00' in advertising_data will be replaced with actual bd addr
+ */
+const hci_cmd_t gap_le_advertisements_set_data_cmd = {
+OPCODE(OGF_BTSTACK, GAP_LE_ADVERTISEMENTS_SET_DATA), "LV"
+};
+
+/**
+ * @param enabled
+ */
+const hci_cmd_t gap_le_advertisements_enable_cmd = {
+OPCODE(OGF_BTSTACK, GAP_LE_ADVERTISEMENTS_ENABLE), "1"
+};
+
+
 
 /**
  * @param io_capability
@@ -603,4 +636,11 @@ const hci_cmd_t sm_numeric_comparison_confirm_cmd = {
  */
 const hci_cmd_t sm_passkey_input_cmd = {
     OPCODE(OGF_BTSTACK, SM_PASSKEY_INPUT), "H4"
+};
+
+/**
+ * @param con_handle
+ */
+const hci_cmd_t sm_request_pairing_cmd = {
+OPCODE(OGF_BTSTACK, SM_REQUEST_PAIRING), "H"
 };

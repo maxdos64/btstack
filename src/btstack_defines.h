@@ -227,6 +227,9 @@ typedef uint8_t sm_key_t[16];
 #define GAP_LE_CONNECT              0x62
 #define GAP_LE_CONNECT_CANCEL       0x63
 #define GAP_LE_SET_SCAN_PARAMETERS  0x64
+#define GAP_LE_ADVERTISEMENTS_SET_PARAMS  0x65
+#define GAP_LE_ADVERTISEMENTS_SET_DATA  0x66
+#define GAP_LE_ADVERTISEMENTS_ENABLE  0x67
 
 // GATT (Client) 0x70
 #define GATT_DISCOVER_ALL_PRIMARY_SERVICES                       0x70
@@ -256,6 +259,7 @@ typedef uint8_t sm_key_t[16];
 #define SM_JUST_WORKS_CONFIRM              0x94
 #define SM_NUMERIC_COMPARISON_CONFIRM      0x95
 #define SM_PASSKEY_INPUT                   0x96
+#define SM_REQUEST_PAIRING                 0x97
 
 // ATT
 

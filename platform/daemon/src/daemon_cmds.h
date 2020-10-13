@@ -99,6 +99,10 @@ extern const hci_cmd_t gap_le_scan_stop;
 extern const hci_cmd_t gap_le_set_scan_parameters;
 extern const hci_cmd_t gap_le_connect_cmd;
 extern const hci_cmd_t gap_le_connect_cancel_cmd;
+extern const hci_cmd_t gap_le_advertisements_set_params_cmd;
+extern const hci_cmd_t gap_le_advertisements_set_data_cmd;
+extern const hci_cmd_t gap_le_advertisements_enable_cmd;
+
 
 extern const hci_cmd_t gap_ssp_set_io_capability_cmd;
 extern const hci_cmd_t gap_ssp_set_authentication_requirement_cmd;

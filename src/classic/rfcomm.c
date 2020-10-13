@@ -2320,6 +2320,7 @@ int rfcomm_send(uint16_t rfcomm_cid, uint8_t *data, uint16_t len){
     rfcomm_channel_t * channel = rfcomm_channel_for_rfcomm_cid(rfcomm_cid);
     if (!channel){
         log_error("cid 0x%02x doesn't exist!", rfcomm_cid);
+        printf("cid 0x%02x doesn't exist!\n", rfcomm_cid);
         return ERROR_CODE_UNKNOWN_CONNECTION_IDENTIFIER;
     }
 
@@ -2327,6 +2328,7 @@ int rfcomm_send(uint16_t rfcomm_cid, uint8_t *data, uint16_t len){
     if (err) return err;
     if (!l2cap_can_send_packet_now(channel->multiplexer->l2cap_cid)){
         log_error("rfcomm_send_internal: l2cap cannot send now");
+        printf("rfcomm_send_internal: l2cap cannot send now\n");
         return BTSTACK_ACL_BUFFERS_FULL;
     }
 
