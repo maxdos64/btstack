@@ -62,6 +62,9 @@
 
 static void btstack_run_loop_posix_dump_timer(void);
 
+//TODO remove
+void (*loop_callback)(void);
+
 // the run loop
 static btstack_linked_list_t data_sources;
 static int data_sources_modified;
@@ -284,6 +287,11 @@ static void btstack_run_loop_posix_execute(void) {
             btstack_run_loop_posix_remove_timer(ts);
             ts->process(ts);
         }
+
+	//TODO remove
+	/* Execute custom callback in every timestep */
+	if(loop_callback)
+		loop_callback();
     }
 }
 
@@ -321,6 +329,12 @@ static const btstack_run_loop_t btstack_run_loop_posix = {
     &btstack_run_loop_posix_dump_timer,
     &btstack_run_loop_posix_get_time_ms,
 };
+
+//TODO remove
+void btstack_run_loop_posix_register_loop_callback(void (*_loop_callback)(void))
+{
+        loop_callback = _loop_callback;
+}
 
 /**
  * Provide btstack_run_loop_posix instance
