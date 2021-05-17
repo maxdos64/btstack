@@ -160,7 +160,7 @@ def create_command_python(fout, name, ogf, ocf, format, params):
      'E' : '# E / TODO Util.storeBytes(command, offset, %s, 240)',
      'P' : '# P / TODO Util.storeBytes(command, offset, %s, 16)',
      'Q' : '# Q / TODO Util.storeBytes(command, offset, %s, 32)',
-     'A' : '# A / TODO Util.storeBytes(command, offset, %s, 31)',
+     'A' : 'cmd_args += %s[:31]'
      }
     # method arguments 
     arg_counter = 1

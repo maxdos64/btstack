@@ -332,7 +332,7 @@ OPCODE(OGF_BTSTACK, GAP_LE_ADVERTISEMENTS_SET_PARAMS), "2211B11"
  * @note '00:00:00:00:00:00' in advertising_data will be replaced with actual bd addr
  */
 const hci_cmd_t gap_le_advertisements_set_data_cmd = {
-OPCODE(OGF_BTSTACK, GAP_LE_ADVERTISEMENTS_SET_DATA), "LV"
+OPCODE(OGF_BTSTACK, GAP_LE_ADVERTISEMENTS_SET_DATA), "LA"
 };
 
 /**
