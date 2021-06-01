@@ -52,7 +52,6 @@ extern "C" {
 /**
  * Provide btstack_run_loop_posix instance
  */
-	void btstack_run_loop_posix_register_loop_callback(void (*_loop_callback)(void));
 const btstack_run_loop_t * btstack_run_loop_posix_get_instance(void);
 
 /* API_END */

@@ -1343,7 +1343,6 @@ static void hci_initializing_run(void){
             break;            
         case HCI_INIT_SET_BD_ADDR:
             log_info("Set Public BD ADDR to %s", bd_addr_to_str(hci_stack->custom_bd_addr));
-            printf("Set Public BD ADDR to %s\n", bd_addr_to_str(hci_stack->custom_bd_addr));
             hci_stack->chipset->set_bd_addr_command(hci_stack->custom_bd_addr, hci_stack->hci_packet_buffer);
             hci_stack->last_cmd_opcode = little_endian_read_16(hci_stack->hci_packet_buffer, 0);
             hci_stack->substate = HCI_INIT_W4_SET_BD_ADDR;
@@ -1721,7 +1720,7 @@ static void hci_initializing_event_handler(const uint8_t * packet, uint16_t size
 
         case HCI_INIT_W4_READ_LOCAL_SUPPORTED_COMMANDS:
             if (need_baud_change && (hci_stack->chipset_result != BTSTACK_CHIPSET_NO_INIT_SCRIPT) &&
-              ((hci_stack->manufacturer == BLUETOOTH_COMPANY_ID_BROADCOM_CORPORATION) ||
+              ((hci_stack->manufacturer == BLUETOOTH_COMPANY_ID_BROADCOM_CORPORATION) || 
                (hci_stack->manufacturer == BLUETOOTH_COMPANY_ID_EM_MICROELECTRONIC_MARIN_SA))) {
                 hci_stack->substate = HCI_INIT_SEND_BAUD_CHANGE_BCM;
                 return;
@@ -1744,7 +1743,7 @@ static void hci_initializing_event_handler(const uint8_t * packet, uint16_t size
                 return;
             }
             hci_stack->substate = HCI_INIT_READ_BD_ADDR;
-            return;
+            return;            
         case HCI_INIT_W4_SET_BD_ADDR:
             // for STLC2500D + ATWILC3000, bd addr change only gets active after sending reset command
             if ((hci_stack->manufacturer == BLUETOOTH_COMPANY_ID_ST_MICROELECTRONICS)
@@ -2490,6 +2489,7 @@ static void event_handler(uint8_t *packet, int size){
             hci_stack->acl_fragmentation_tx_active = 0;
             if (hci_stack->acl_fragmentation_total_size) break;
             hci_release_packet_buffer();
+            
             // L2CAP receives this event via the hci_emit_event below
 
 #ifdef ENABLE_CLASSIC
@@ -2778,7 +2778,7 @@ static void sco_handler(uint8_t * packet, uint16_t size){
     conn->num_packets_completed++;
     hci_stack->host_completed_packets = 1;
     hci_run();
-#endif
+#endif    
 }
 #endif
 
@@ -2819,7 +2819,7 @@ void hci_register_acl_packet_handler(btstack_packet_handler_t handler){
  * @brief Registers a packet handler for SCO data. Used for HSP and HFP profiles.
  */
 void hci_register_sco_packet_handler(btstack_packet_handler_t handler){
-    hci_stack->sco_packet_handler = handler;
+    hci_stack->sco_packet_handler = handler;    
 }
 #endif
 
@@ -2868,7 +2868,7 @@ void hci_set_link_key_db(btstack_link_key_db_t const * link_key_db){
 #endif
 
 void hci_init(const hci_transport_t *transport, const void *config){
-
+    
 #ifdef HAVE_MALLOC
     if (!hci_stack) {
         hci_stack = (hci_stack_t*) malloc(sizeof(hci_stack_t));
@@ -2880,16 +2880,16 @@ void hci_init(const hci_transport_t *transport, const void *config){
 
     // reference to use transport layer implementation
     hci_stack->hci_transport = transport;
-
+        
     // reference to used config
     hci_stack->config = config;
-
+    
     // setup pointer for outgoing packet buffer
     hci_stack->hci_packet_buffer = &hci_stack->hci_packet_buffer_data[HCI_OUTGOING_PRE_BUFFER_SIZE];
 
     // max acl payload size defined in config.h
     hci_stack->acl_data_packet_length = HCI_ACL_PAYLOAD_SIZE;
-
+    
     // register packet handlers with transport
     transport->register_packet_handler(&packet_handler);
 
