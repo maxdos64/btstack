@@ -255,42 +255,6 @@ uint8_t sm_generate_sc_oob_data(void (*callback)(const uint8_t * confirm_value, 
  */
 void sm_register_sc_oob_data_callback( int (*get_sc_oob_data_callback)(uint8_t address_type, bd_addr_t addr, uint8_t * oob_sc_peer_confirm, uint8_t * oob_sc_peer_random));
 
-
-/**
- * @BThack callback mods
- */
-
-typedef enum {
-    JUST_WORKS,
-    PK_RESP_INPUT,       // Initiator displays PK, responder inputs PK
-    PK_INIT_INPUT,       // Responder displays PK, initiator inputs PK
-    PK_BOTH_INPUT,       // Only input on both, both input PK
-    NUMERIC_COMPARISON,  // Only numerical compparison (yes/no) on on both sides
-    OOB                  // OOB available on one (SC) or both sides (legacy)
-} stk_generation_method_t;
-
-struct SmMitmOptions{
-	void (*sm_run_callback)(void);
-	void (*initiator_await_manipulated_pubkey_callback)(char *);
-	void (*responder_await_manipulated_pubkey_callback)(char *);
-	void (*initiator_pub_key_received_callback)(char *);
-	void (*responder_pub_key_received_callback)(char *);
-	void (*initiator_confirm_received_callback)(sm_key_t);
-	void (*responder_await_manipulated_confirm_callback)(sm_key_t);
-	void (*initiator_await_manipulated_na_callback)(sm_key_t);
-	void (*responder_na_received_callback)(sm_key_t);
-	void (*initiator_nb_received_callback)(sm_key_t);
-	void (*responder_await_manipulated_nb_callback)(sm_key_t);
-	void (*initiator_custom_dh_key_callback)(sm_key_t dh_key);
-	void (*responder_custom_dh_key_callback)(sm_key_t dh_key);
-	void (*initiator_received_pairing_feature_exchange_callback)(stk_generation_method_t method);
-	void (*responder_set_custom_pairing_feature_exchange_callback)(uint8_t iocap);
-	void (*responder_set_custom_passkey_callback)(uint32_t* tk);
-	uint8_t turnoff_dhkey_validation;
-};
-void sm_register_mitm_options(struct SmMitmOptions* options);
-
-
 /* API_END */
 
 // PTS testing

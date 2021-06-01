@@ -147,7 +147,7 @@ def create_command_python(fout, name, ogf, ocf, format, params):
      'H' : 'cmd_args += struct.pack("<H", %s)',
      'L' : 'cmd_args += struct.pack("<H", %s)',
      '3' : 'cmd_args += pack24(%s)',
-     '4' : 'cmd_args += struct.pack("<H", %s)',
+     '4' : 'cmd_args += struct.pack("<L", %s)',
      'N' : 'cmd_args += name248(%s)',
      'B' : 'cmd_args += %s.get_bytes()',
      'U' : 'cmd_args += %s.get_bytes()', 
