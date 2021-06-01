@@ -14,16 +14,19 @@
 #include "CppUTest/TestHarness.h"
 #include "CppUTest/CommandLineTestRunner.h"
 
-#include "btstack_run_loop_posix.h"
+#include "btstack_run_loop_embedded.h"
 
 #include "hci_cmd.h"
 #include "btstack_util.h"
-
+#include "btstack_debug.h"
 #include "btstack_memory.h"
 #include "hci.h"
 #include "hci_dump.h"
+#include "hci_dump_posix_fs.h"
 #include "l2cap.h"
 #include "ble/sm.h"
+
+uint8_t test_command_packet_sc_read_public_key[] = { 0x25, 0x20, 0x00 };
 
 // test data
 
@@ -166,8 +169,8 @@ void CHECK_EQUAL_ARRAY(uint8_t * expected, uint8_t * actual, int size){
 	}
 }
 
-#define CHECK_HCI_COMMAND(packet) { printf("check " #packet "\n") ; CHECK_EQUAL_ARRAY(packet, mock_packet_buffer(), sizeof(packet)); mock_clear_packet_buffer(); }
-#define CHECK_ACL_PACKET(packet)  { printf("check " #packet "\n") ; CHECK_EQUAL_ARRAY(packet, mock_packet_buffer(), sizeof(packet)); mock_clear_packet_buffer(); }
+#define CHECK_HCI_COMMAND(packet) { log_info("check " #packet) ; CHECK_EQUAL_ARRAY(packet, mock_packet_buffer(), sizeof(packet)); mock_clear_packet_buffer(); }
+#define CHECK_ACL_PACKET(packet)  { log_info("check " #packet) ; CHECK_EQUAL_ARRAY(packet, mock_packet_buffer(), sizeof(packet)); mock_clear_packet_buffer(); }
 
 static int parse_hex(uint8_t * buffer, const char * hex_string){
     int len = 0;
@@ -206,36 +209,6 @@ static void cmac_done(uint8_t * hash){
 
 static uint8_t m[128];
 
-#if 0
-// CMAC calculation has been moved to btstack_crypto
-static uint8_t get_byte(uint16_t offset){
-    // printf ("get byte %02u -> %02x\n", offset, m[offset]);
-    return m[offset];
-}
-static void validate_message(const char * name, const char * message_string, const char * cmac_string){
-
-    mock_clear_packet_buffer();
-    int len = parse_hex(m, message_string);
-
-    // expected result
-    sm_key_t cmac;
-    parse_hex(cmac, cmac_string);
-
-    printf("-- verify key %s message %s, len %u:\nm:    %s\ncmac: %s\n", key_string, name, len, message_string, cmac_string);
-
-    sm_key_t key;
-    parse_hex(key, key_string);
-    // printf_hexdump(key, 16);
-
-    cmac_hash_received = 0;
-    sm_cmac_general_start(key, len, &get_byte, &cmac_done);
-    while (!cmac_hash_received){
-        aes128_report_result();
-    }
-    CHECK_EQUAL_ARRAY(cmac, cmac_hash, 16);
-}
-#endif
-
 #define VALIDATE_MESSAGE(NAME) validate_message(#NAME, NAME##_string, cmac_##NAME##_string)
 
 TEST_GROUP(SecurityManager){
@@ -244,67 +217,62 @@ TEST_GROUP(SecurityManager){
         if (first){
             first = 0;
             btstack_memory_init();
-            btstack_run_loop_init(btstack_run_loop_posix_get_instance());
+            btstack_run_loop_init(btstack_run_loop_embedded_get_instance());
         }
 	    sm_init();
 	    sm_set_io_capabilities(IO_CAPABILITY_NO_INPUT_NO_OUTPUT);
 	    sm_set_authentication_requirements( SM_AUTHREQ_BONDING ); 
         sm_event_callback_registration.callback = &app_packet_handler;
-        sm_add_event_handler(&sm_event_callback_registration);	
+        sm_add_event_handler(&sm_event_callback_registration);
+
+
+        // log into file using HCI_DUMP_PACKETLOGGER format
+        const char * log_path = "hci_dump.pklg";
+        hci_dump_posix_fs_open(log_path, HCI_DUMP_PACKETLOGGER);
+        hci_dump_init(hci_dump_posix_fs_get_instance());
+        printf("Packet Log: %s\n", log_path);
     }
 };
-
-#if 0
-TEST(SecurityManager, CMACTest){
-
-    mock_init();
-    mock_simulate_hci_state_working();
-
-    // expect le encrypt commmand
-    CHECK_HCI_COMMAND(test_command_packet_01);
-
-    aes128_report_result();
-
-    // expect le encrypt commmand
-    CHECK_HCI_COMMAND(test_command_packet_02);
-
-    aes128_report_result();
-    mock_clear_packet_buffer();
-
-    // additional test: cmac signing
-    // aes cmac tests
-    sm_key_t key;
-    parse_hex(key, key_string);
-    uint8_t message [] = "hallo";
-    cmac_hash_received = 0;
-    sm_cmac_signed_write_start(key, 0x11, 0x1234, sizeof(message), message, 1, &cmac_done);
-    while (!cmac_hash_received){
-        aes128_report_result();
-    }
-    uint8_t expected_hash[] = { 0x40, 0x4E, 0xDC, 0x0F, 0x6E, 0x0F, 0xF9, 0x5C};
-    CHECK_EQUAL_ARRAY(expected_hash, cmac_hash, 8);
-
-    // generic aes cmac tests
-    VALIDATE_MESSAGE(m0);
-    VALIDATE_MESSAGE(m16);
-    VALIDATE_MESSAGE(m40);
-    VALIDATE_MESSAGE(m64);
-}
-#endif
 
 TEST(SecurityManager, MainTest){
 
     mock_init();
     mock_simulate_hci_state_working();
 
+#ifdef ENABLE_LE_SECURE_CONNECTIONS
+	// on start, new ECC Key is generated
+#ifdef ENABLE_MICRO_ECC_FOR_LE_SECURE_CONNECTIONS
+    // with uECC, this requires to get some random data
+    int i;
+    for (i=0;i<8;i++){
+		CHECK_HCI_COMMAND(test_command_packet_04);
+		uint8_t rand_sc_1_data_event[] = { 0x0e, 0x0c, 0x01, 0x18, 0x20, 0x00, 0x2f, 0x04, 0x82, 0x84, 0x72, 0x46, 0x9c, 0x93 };
+		mock_simulate_hci_event(&rand_sc_1_data_event[0], sizeof(rand_sc_1_data_event));
+    }
+#else
+	// with Controller support, the stack will read public key
+	CHECK_HCI_COMMAND(test_command_packet_sc_read_public_key);
+	uint8_t read_public_key_event[] = {
+			0x3E, 0x42, 0x08, 0x00, 0xD1, 0xD2, 0x7C, 0xF7, 0x08, 0x34, 0xC8, 0x19, 0xEC, 0x92, 0x39, 0x8D,
+			0x55, 0xE7, 0xAB, 0x25, 0xDE, 0x7B, 0x32, 0x05, 0x64, 0xA8, 0x90, 0xA7, 0xE6, 0x52, 0x7B, 0x41,
+			0x29, 0x14, 0xA3, 0xAE, 0x73, 0xC9, 0x57, 0x20, 0xA8, 0x5F, 0xFE, 0xE7, 0xC1, 0x27, 0xDE, 0x7D,
+			0xB7, 0x25, 0xB0, 0xC1, 0x9E, 0x1F, 0xFE, 0xD1, 0xF0, 0x21, 0x22, 0x7E, 0x1F, 0xF4, 0x5D, 0x07,
+			0x6D, 0x6F, 0x12, 0x06
+	};
+	mock_simulate_hci_event(&read_public_key_event[0], sizeof(read_public_key_event));
+#endif
+#endif
+	
+#ifndef ENABLE_SOFTWARE_AES128
     // expect le encrypt commmand
     CHECK_HCI_COMMAND(test_command_packet_01);
     aes128_report_result();
 
     // expect le encrypt commmand
     CHECK_HCI_COMMAND(test_command_packet_02);
-
     aes128_report_result();
+#endif
+
 	mock_clear_packet_buffer();
 
     mock_simulate_connected();
@@ -330,31 +298,38 @@ TEST(SecurityManager, MainTest){
     uint8_t rand2_data_event[] = { 0x0e, 0x0c,0x01, 0x18,0x20, 0x00,0x48, 0x3f,0x27, 0x0e,0xeb, 0xd5,0x05, 0x7a };
 	mock_simulate_hci_event(&rand2_data_event[0], sizeof(rand2_data_event));
 
-	// expect le encrypt command
+#ifdef ENABLE_SOFTWARE_AES128
+	// process sm_run_trigger()
+    btstack_run_loop_embedded_execute_once();
+#else
+    // expect le encrypt command
     CHECK_HCI_COMMAND(test_command_packet_06);
-
     aes128_report_result();
 
     // expect le encrypt command
     CHECK_HCI_COMMAND(test_command_packet_07);
-
     aes128_report_result();
+#endif
 
-    // expect send paring confirm command
+
+    // expect send pairing confirm command
     CHECK_ACL_PACKET(test_acl_packet_08);
 
     uint8_t test_pairing_random_command[] ={0x04, 0xfd, 0xd4, 0x06, 0x45, 0x0f, 0x1e, 0xdc, 0x84, 0xd5, 0x43, 0xac, 0xf7, 0x5e, 0xc0, 0x36, 0x29};
     mock_simulate_sm_data_packet(&test_pairing_random_command[0], sizeof(test_pairing_random_command));
 
+#ifdef ENABLE_SOFTWARE_AES128
+    // process sm_run_trigger()
+    btstack_run_loop_embedded_execute_once();
+#else
     // expect le encrypt command
     CHECK_HCI_COMMAND(test_command_packet_09);
-
     aes128_report_result();
 
     // expect le encrypt command
     CHECK_HCI_COMMAND(test_command_packet_10);
-
     aes128_report_result();
+#endif
 
     // expect send pairing random command
     CHECK_ACL_PACKET(test_acl_packet_11);
@@ -364,10 +339,14 @@ TEST(SecurityManager, MainTest){
 	uint8_t test_le_ltk_request[] = { 0x3e, 0x0d, 0x05, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 00 };
 	mock_simulate_hci_event(&test_le_ltk_request[0], sizeof(test_le_ltk_request));
 
+#ifdef ENABLE_SOFTWARE_AES128
+    // process sm_run_trigger()
+    btstack_run_loop_embedded_execute_once();
+#else
 	// expect le encrypt command
     CHECK_HCI_COMMAND(test_command_packet_12);
-
     aes128_report_result();
+#endif
 
 	// expect le ltk reply
     CHECK_HCI_COMMAND(test_command_packet_13);
@@ -387,21 +366,23 @@ TEST(SecurityManager, MainTest){
     uint8_t rand4_data_event[] = { 0x0e, 0x0c, 0x01, 0x18, 0x20, 0x00, 0xf1, 0xe2, 0xbf, 0x7d, 0x84, 0x19, 0x32, 0x8b };
 	mock_simulate_hci_event(&rand4_data_event[0], sizeof(rand4_data_event));
 
+#ifdef ENABLE_SOFTWARE_AES128
+    // process sm_run_trigger()
+    btstack_run_loop_embedded_execute_once();
+#else
 	// expect le encrypt command
     CHECK_HCI_COMMAND(test_command_packet_16);
-
     aes128_report_result();
 
 	// expect le encrypt command
     CHECK_HCI_COMMAND(test_command_packet_17);
-
     aes128_report_result();
 
 	// expect le encrypt command
     CHECK_HCI_COMMAND(test_command_packet_18);
-
     aes128_report_result();
-
+#endif
+    
     //
 	uint8_t num_completed_packets_event[] = { 0x13, 0x05, 0x01, 0x4a, 0x00, 0x01, 00 };
 
@@ -430,6 +411,11 @@ TEST(SecurityManager, MainTest){
 }
 
 int main (int argc, const char * argv[]){
-    // hci_dump_open("hci_dump.pklg", HCI_DUMP_STDOUT); // HCI_DUMP_PACKETLOGGER
+    // log into file using HCI_DUMP_PACKETLOGGER format
+    const char * log_path = "hci_dump.pklg";
+    hci_dump_posix_fs_open(log_path, HCI_DUMP_PACKETLOGGER);
+    hci_dump_init(hci_dump_posix_fs_get_instance());
+    printf("Packet Log: %s\n", log_path);
+
     return CommandLineTestRunner::RunAllTests(argc, argv);
 }

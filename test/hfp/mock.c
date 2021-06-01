@@ -51,7 +51,10 @@
 #include "classic/sdp_client_rfcomm.h"
 #include "classic/rfcomm.h"
 #include "classic/hfp_hf.h"
+#include "classic/sdp_client.h"
 #include "classic/sdp_client_rfcomm.h"
+#include "hci.h"
+#include "l2cap.h"
 
 #include "mock.h"
 
@@ -129,8 +132,8 @@ void print_without_newlines(uint8_t *data, uint16_t len){
     printf("\n");
 }
 
-extern "C" void l2cap_init(void){}
-extern "C" void hci_add_event_handler(btstack_packet_callback_registration_t * callback_handler){
+void l2cap_init(void){}
+void hci_add_event_handler(btstack_packet_callback_registration_t * callback_handler){
     registered_hci_packet_handler = callback_handler->callback;
 }
 
@@ -238,7 +241,7 @@ static void sdp_client_query_rfcomm_service_response(uint8_t status){
     (*registered_sdp_app_callback)(HCI_EVENT_PACKET, 0, event, sizeof(event));
 }
 
-uint8_t sdp_client_query_rfcomm_channel_and_name_for_uuid(btstack_packet_handler_t callback, bd_addr_t remote, uint16_t uuid){
+uint8_t sdp_client_query_rfcomm_channel_and_name_for_service_class_uuid(btstack_packet_handler_t callback, bd_addr_t remote, uint16_t uuid){
 	// printf("sdp_client_query_rfcomm_channel_and_name_for_uuid %p\n", registered_sdp_app_callback);
     registered_sdp_app_callback = callback;
 	sdp_client_query_rfcomm_service_response(0);
@@ -246,6 +249,10 @@ uint8_t sdp_client_query_rfcomm_channel_and_name_for_uuid(btstack_packet_handler
     return 0;
 }
 
+uint8_t sdp_client_register_query_callback(btstack_context_callback_registration_t * callback_registration){
+    (callback_registration->callback)(callback_registration->context);
+    return ERROR_CODE_SUCCESS;
+}
 
 uint8_t rfcomm_create_channel(btstack_packet_handler_t handler, bd_addr_t addr, uint8_t channel, uint16_t * out_cid){
 

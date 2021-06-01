@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # BlueKitchen GmbH (c) 2014
 
 # convert log output to PacketLogger format
@@ -91,7 +91,7 @@ if len(sys.argv) == 1:
 	print('BTstack Console to PacketLogger converter')
 	print('Copyright 2014, BlueKitchen GmbH')
 	print('')
-	print('Usage: ', sys.argv[0], 'asci-log-file.txt [hci_dump.pkgl]')
+	print('Usage: ', sys.argv[0], 'ascii-log-file.txt [hci_dump.pklg]')
 	print('Converted hci_dump.pklg can be viewed with Wireshark and OS X PacketLogger')
 	exit(0)
 
@@ -107,11 +107,13 @@ with open (outfile, 'wb') as fout:
 		line_conter = 0
 		for line in fin:
 			try:
+				# try to deal with windows 16-bit unicode by dropping \0 characters
+				line = ''.join([c for c in line if c != '\0'])
 				line_conter += 1
 				timestamp = None
 				# strip newlines
 				line = line.strip("\n\r")
-				# skip empyt lines
+				# skip empty lines
 				if len(line) == 0: 
 					continue
 				parts = re.match('\[(.*)\] (.*)', line)

@@ -35,497 +35,607 @@
  *
  */
 
-// *****************************************************************************
-/* EXAMPLE_START(sm_test): Security Manager Test
- *
- */
-// *****************************************************************************
+#define BTSTACK_FILE__ "sm_test.c"
 
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+#include <btstack_debug.h>
 
 #include "btstack_config.h"
 
+#include "ad_parser.h"
 #include "ble/att_db.h"
 #include "ble/att_server.h"
 #include "ble/le_device_db.h"
 #include "ble/sm.h"
-#include "btstack_debug.h"
 #include "btstack_event.h"
-#include "btstack_memory.h"
-#include "btstack_run_loop.h"
 #include "gap.h"
 #include "hci.h"
 #include "hci_dump.h"
 #include "l2cap.h"
 #include "btstack_stdin.h"
- 
-#define HEARTBEAT_PERIOD_MS 1000
 
-const uint8_t adv_data[] = {
-    // Flags general discoverable, BR/EDR not supported
-    0x02, 0x01, 0x06, 
-    // Name
-    0x0d, 0x09, 'S', 'M', ' ', 'P', 'e', 'r', 'i', 'p', 'h', 'e', 'a', 'l' 
-};
-const uint8_t adv_data_len = sizeof(adv_data);
+// Non standard IXIT
+#define PTS_USES_RECONNECTION_ADDRESS_FOR_ITSELF
+#define PTS_UUID128_REPRESENTATION
 
-// test profile
-#include "sm_test.h"
+typedef struct advertising_report {
+    uint8_t   type;
+    uint8_t   event_type;
+    uint8_t   address_type;
+    bd_addr_t address;
+    uint8_t   rssi;
+    uint8_t   length;
+    uint8_t * data;
+} advertising_report_t;
 
-static uint8_t sm_have_oob_data = 0;
-static uint8_t sm_io_capabilities = 0;
-static uint8_t sm_auth_req = 0;
-static uint8_t sm_failure = 0;
+static uint8_t test_irk[] =  { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
-// legacy pairing oob
-static uint8_t sm_oob_tk_data[] = { 0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  };
+static int gap_privacy = 0;
+static int gap_bondable = 1;
+static int gap_connectable = 0;
 
-// sc pairing oob
-static uint8_t sm_oob_local_random[16];
-static uint8_t sm_oob_peer_random[16];
-static uint8_t sm_oob_peer_confirm[16];
-
-static int       we_are_central = 0;
-static bd_addr_t peer_address;
+static char * sm_io_capabilities = NULL;
+static bool sm_le_secure_connections = 0;
+static int sm_mitm_protection = 0;
+static int sm_have_oob_data = 0;
+static uint8_t * sm_oob_data_A = (uint8_t *) "0123456789012345"; // = { 0x30...0x39, 0x30..0x35}
+static uint8_t * sm_oob_data_B = (uint8_t *) "3333333333333333"; // = { 0x30...0x39, 0x30..0x35}
+static int sm_min_key_size = 7;
 
 static int ui_passkey = 0;
 static int ui_digits_for_passkey = 0;
-static int ui_oob_confirm;
-static int ui_oob_random;
-static int ui_oob_pos;
-static int ui_oob_nibble;
+static uint16_t handle = 0;
 
-static btstack_timer_source_t heartbeat;
-static uint8_t counter = 0;
+static bd_addr_t public_pts_address = {0x00, 0x1B, 0xDC, 0x08, 0xe2, 0x5c};
+static int       public_pts_address_type = 0;
+static bd_addr_t current_pts_address;
+static int       current_pts_address_type;
+static int       reconnection_address_set = 0;
 
-static uint16_t connection_handle = 0;
+static uint8_t signed_write_value[] = { 0x12 };
+static int le_device_db_index;
 
 static btstack_packet_callback_registration_t hci_event_callback_registration;
 static btstack_packet_callback_registration_t sm_event_callback_registration;
 
-typedef enum {
-    TC_IDLE,
-    TC_W4_SCAN_RESULT,
-    TC_W4_CONNECT,
-    TC_W4_SERVICE_RESULT,
-    TC_W4_CHARACTERISTIC_RESULT,
-    TC_W4_SUBSCRIBED,
-    TC_SUBSCRIBED
-} gc_state_t;
+static void show_usage(void);
+///
 
-static gc_state_t state = TC_IDLE;
+const char * ad_event_types[] = {
+    "Connectable undirected advertising",
+    "Connectable directed advertising",
+    "Scannable undirected advertising",
+    "Non connectable undirected advertising",
+    "Scan Response"
+};
 
-static uint8_t le_counter_service_uuid[16]        = { 0x00, 0x00, 0xFF, 0x10, 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0x80, 0x5F, 0x9B, 0x34, 0xFB};
-static uint8_t le_counter_characteristic_uuid[16] = { 0x00, 0x00, 0xFF, 0x11, 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0x80, 0x5F, 0x9B, 0x34, 0xFB};
-
-static gatt_client_service_t le_counter_service;
-static gatt_client_characteristic_t le_counter_characteristic;
-
-static gatt_client_notification_t notification_listener;
-static void  heartbeat_handler(struct btstack_timer_source *ts){
-    // restart timer
-    btstack_run_loop_set_timer(ts, HEARTBEAT_PERIOD_MS);
-    btstack_run_loop_add_timer(ts);
-    counter++;
-} 
-
-static int get_oob_data_callback(uint8_t address_type, bd_addr_t addr, uint8_t * oob_data){
-    UNUSED(address_type);
-    (void)addr;
-    log_info("get_oob_data_callback for %s", bd_addr_to_str(addr));
-    if(!sm_have_oob_data) return 0;
-    memcpy(oob_data, sm_oob_tk_data, 16);
-    return 1;
-}
-
-static int get_sc_oob_data_callback(uint8_t address_type, bd_addr_t addr, uint8_t * oob_sc_peer_confirm, uint8_t * oob_sc_peer_random){
-    UNUSED(address_type);
-    (void)addr;
-    log_info("get_sc_oob_data_callback for %s", bd_addr_to_str(addr));
-    if(!sm_have_oob_data) return 0;
-    memcpy(oob_sc_peer_confirm, sm_oob_peer_confirm, 16);
-    memcpy(oob_sc_peer_random,  sm_oob_peer_random, 16);
-    return 1;
-}
-
-static void sc_local_oob_generated_callback(const uint8_t * confirm_value, const uint8_t * random_value){
-    printf("LOCAL_OOB_CONFIRM: ");
-    printf_hexdump(confirm_value, 16);
-    printf("LOCAL_OOB_RANDOM: ");
-    printf_hexdump(random_value, 16);
-    fflush(stdout);
-    memcpy(sm_oob_local_random, random_value, 16);
-}
-
-// ATT Client Read Callback for Dynamic Data
-// - if buffer == NULL, don't copy data, just return size of value
-// - if buffer != NULL, copy data and return number bytes copied
-// @param offset defines start of attribute value
-static uint16_t att_read_callback(hci_con_handle_t con_handle, uint16_t attribute_handle, uint16_t offset, uint8_t * buffer, uint16_t buffer_size){
-    UNUSED(con_handle);
-    UNUSED(buffer);
-    printf("READ Callback, handle %04x, offset %u, buffer size %u\n", attribute_handle, offset, buffer_size);
-    switch (attribute_handle){
-        default:
-            break;
-    }
-    return 0;
-}
-
-// write requests
-static int att_write_callback(hci_con_handle_t con_handle, uint16_t attribute_handle, uint16_t transaction_mode, uint16_t offset, uint8_t *buffer, uint16_t buffer_size){
-    UNUSED(con_handle);
-    printf("WRITE Callback, handle %04x, mode %u, offset %u, data: ", attribute_handle, transaction_mode, offset);
-    printf_hexdump(buffer, buffer_size);
-
-    switch (attribute_handle){
-        case ATT_CHARACTERISTIC_0000FF11_0000_1000_8000_00805F9B34FB_01_CLIENT_CONFIGURATION_HANDLE:
-            // short cut, send right away
-            att_server_request_can_send_now_event(con_handle);
-            break;
-        default:
-            break;
-    }
-    return 0;
-}
-
-static void handle_gatt_client_event(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size){
-    UNUSED(packet_type);
-    UNUSED(channel);
+static void handle_advertising_event(uint8_t * packet, int size){
     UNUSED(size);
+    // filter PTS
+    bd_addr_t addr;
+    gap_event_advertising_report_get_address(packet, addr);
+    uint8_t addr_type = gap_event_advertising_report_get_address_type(packet);
+    // always request address resolution
+    sm_address_resolution_lookup(addr_type, addr);
 
-    int status;
-    char message[30];
+    // ignore advertisement from devices other than pts
+    // if (memcmp(addr, current_pts_address, 6)) return;
+    uint8_t adv_event_type = gap_event_advertising_report_get_advertising_event_type(packet);
+    printf("Advertisement: %s - %s, ", bd_addr_to_str(addr), ad_event_types[adv_event_type]);
+    int adv_size = gap_event_advertising_report_get_data_length(packet);
+    const uint8_t * adv_data = gap_event_advertising_report_get_data(packet);
 
-    switch(state){
-        case TC_W4_SERVICE_RESULT:
-            switch(hci_event_packet_get_type(packet)){
-                case GATT_EVENT_SERVICE_QUERY_RESULT:
-                    gatt_event_service_query_result_get_service(packet, &le_counter_service);
-                    break;
-                case GATT_EVENT_QUERY_COMPLETE:
-                    if (packet[4] != 0){
-                        printf("SERVICE_QUERY_RESULT - Error status %x.\n", packet[4]);
-                        gap_disconnect(connection_handle);
-                        break;  
-                    } 
-                    state = TC_W4_CHARACTERISTIC_RESULT;
-                    printf("Search for counter characteristic.\n");
-                    gatt_client_discover_characteristics_for_service_by_uuid128(handle_gatt_client_event, connection_handle, &le_counter_service, le_counter_characteristic_uuid);
-                    break;
-                default:
-                    break;
-            }
+    // check flags
+    ad_context_t context;
+    for (ad_iterator_init(&context, adv_size, (uint8_t *)adv_data) ; ad_iterator_has_more(&context) ; ad_iterator_next(&context)){
+        uint8_t data_type = ad_iterator_get_data_type(&context);
+        // uint8_t size      = ad_iterator_get_data_len(&context);
+        const uint8_t * data = ad_iterator_get_data(&context);
+        switch (data_type){
+            case 1: // AD_FLAGS
+                if (*data & 1) printf("LE Limited Discoverable Mode, ");
+                if (*data & 2) printf("LE General Discoverable Mode, ");
+                break;
+            default:
+                break;
+        }
+    }
+
+    // dump data
+    printf("Data: ");
+    printf_hexdump(adv_data, adv_size);
+}
+
+static uint8_t gap_adv_type(void){
+    // if (gap_scannable) return 0x02;
+    // if (gap_directed_connectable) return 0x01;
+    if (!gap_connectable) return 0x03;
+    return 0x00;
+}
+
+static void update_advertisement_params(void){
+    uint8_t adv_type = gap_adv_type();
+    printf("GAP: Connectable = %u -> advertising_type %u (%s)\n", gap_connectable, adv_type, ad_event_types[adv_type]);
+    bd_addr_t null_addr;
+    memset(null_addr, 0, 6);
+    uint16_t adv_int_min = 0x800;
+    uint16_t adv_int_max = 0x800;
+    switch (adv_type){
+        case 0:
+        case 2:
+        case 3:
+            gap_advertisements_set_params(adv_int_min, adv_int_max, adv_type, 0, null_addr, 0x07, 0x00);
             break;
-            
-        case TC_W4_CHARACTERISTIC_RESULT:
-            switch(hci_event_packet_get_type(packet)){
-                case GATT_EVENT_CHARACTERISTIC_QUERY_RESULT:
-                    gatt_event_characteristic_query_result_get_characteristic(packet, &le_counter_characteristic);
-                    break;
-                case GATT_EVENT_QUERY_COMPLETE:
-                    if (packet[4] != 0){
-                        printf("CHARACTERISTIC_QUERY_RESULT - Error status %x.\n", packet[4]);
-                        gap_disconnect(connection_handle);
-                        break;  
-                    } 
-                    state = TC_W4_SUBSCRIBED;
-                    printf("Configure counter for notify.\n");
-                    status = gatt_client_write_client_characteristic_configuration(handle_gatt_client_event, connection_handle, &le_counter_characteristic, GATT_CLIENT_CHARACTERISTICS_CONFIGURATION_NOTIFICATION);
-                    break;
-                default:
-                    break;
-            }
+        case 1:
+        case 4:
+            gap_advertisements_set_params(adv_int_min, adv_int_max, adv_type, public_pts_address_type, public_pts_address, 0x07, 0x00);
             break;
-        case TC_W4_SUBSCRIBED:
-            switch(hci_event_packet_get_type(packet)){
-                case GATT_EVENT_QUERY_COMPLETE:
-                    // register handler for notifications
-                    state = TC_SUBSCRIBED;
-                    printf("Subscribed, start listening\n");
-                    gatt_client_listen_for_characteristic_value_updates(&notification_listener, handle_gatt_client_event, connection_handle, &le_counter_characteristic);
-                    break;
-                default:
-                    break;
-            }
-            break;
-
-        case TC_SUBSCRIBED:
-            switch(hci_event_packet_get_type(packet)){
-                case GATT_EVENT_NOTIFICATION:
-                    memset(message, 0, sizeof(message));
-                    memcpy(message, gatt_event_notification_get_value(packet), gatt_event_notification_get_value_length(packet));
-                    printf("COUNTER: %s\n", message);
-                    log_info("COUNTER: %s", message);
-                    break;
-                default:
-                    break;
-            }
-
         default:
+            btstack_assert(false);
             break;
     }
-    fflush(stdout);
 }
 
 static void app_packet_handler (uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size){
     UNUSED(channel);
-    UNUSED(size);
-    bd_addr_t local_addr;
+    uint16_t aHandle;
+    bd_addr_t event_address;
+
     switch (packet_type) {
+            
         case HCI_EVENT_PACKET:
             switch (packet[0]) {
+                
                 case BTSTACK_EVENT_STATE:
                     // bt stack activated, get started
                     if (btstack_event_state_get_state(packet) == HCI_STATE_WORKING){
-                        gap_local_bd_addr(local_addr);
-                        printf("BD_ADDR: %s\n", bd_addr_to_str(local_addr));
-                        // generate OOB data
-                        sm_generate_sc_oob_data(sc_local_oob_generated_callback);
+                        // add bonded device with IRK 0x00112233..FF for gap-conn-prda-bv-2
+                        uint8_t pts_irk[] = { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff };
+                        le_device_db_add(public_pts_address_type, public_pts_address, pts_irk);
+                        // ready
+                        printf("SM Test ready\n");
+                        show_usage();
                     }
                     break;
+
+                case HCI_EVENT_CONNECTION_COMPLETE:
+                    if (hci_event_connection_complete_get_status(packet) == ERROR_CODE_SUCCESS) {
+                        handle = hci_event_connection_complete_get_connection_handle(packet);
+                        printf("BR/EDR Connection complete, handle 0x%04x\n", handle);
+                    }
+                    break;
+
                 case HCI_EVENT_LE_META:
                     switch (hci_event_le_meta_get_subevent_code(packet)) {
                         case HCI_SUBEVENT_LE_CONNECTION_COMPLETE:
-                            connection_handle = little_endian_read_16(packet, 4);
-                            printf("CONNECTED: Connection handle 0x%04x\n", connection_handle);
+                            handle = hci_subevent_le_connection_complete_get_connection_handle(packet);
+                            printf("Connection complete, handle 0x%04x\n", handle);
                             break;
+
                         default:
                             break;
                     }
                     break;
+
                 case HCI_EVENT_DISCONNECTION_COMPLETE:
+                    aHandle = little_endian_read_16(packet, 3);
+                    printf("Disconnected from handle 0x%04x\n", aHandle);
                     break;
-                case SM_EVENT_JUST_WORKS_REQUEST:
-                    printf("JUST_WORKS_REQUEST\n");
-                    break;
-                case SM_EVENT_NUMERIC_COMPARISON_REQUEST:
-                    printf("NUMERIC_COMPARISON_REQUEST\n");
-                    break;
-                case SM_EVENT_PASSKEY_INPUT_NUMBER:
-                    // display number
-                    printf("PASSKEY_INPUT_NUMBER\n");
+                    
+                case SM_EVENT_PASSKEY_INPUT_NUMBER: 
+                    // store peer address for input
+                    printf("\nGAP Bonding: Enter 6 digit passkey: '");
+                    fflush(stdout);
                     ui_passkey = 0;
                     ui_digits_for_passkey = 6;
-                    sm_keypress_notification(connection_handle, SM_KEYPRESS_PASSKEY_ENTRY_STARTED);
                     break;
+
                 case SM_EVENT_PASSKEY_DISPLAY_NUMBER:
-                    // display number
-                    printf("PASSKEY_DISPLAY_NUMBER: %06u\n", little_endian_read_32(packet, 11));
+                    printf("\nGAP Bonding: Display Passkey '%06u\n", little_endian_read_32(packet, 11));
                     break;
+
                 case SM_EVENT_PASSKEY_DISPLAY_CANCEL: 
+                    printf("\nGAP Bonding: Display cancel\n");
                     break;
+
+                case SM_EVENT_JUST_WORKS_REQUEST:
+                    // auto-authorize connection if requested
+                    sm_just_works_confirm(little_endian_read_16(packet, 2));
+                    printf("Just Works request confirmed\n");
+                    break;
+
                 case SM_EVENT_AUTHORIZATION_REQUEST:
+                    // auto-authorize connection if requested
+                    sm_authorization_grant(little_endian_read_16(packet, 2));
                     break;
-                case SM_EVENT_PAIRING_COMPLETE:
-                    printf("\nPAIRING_COMPLETE: %u,%u\n", sm_event_pairing_complete_get_status(packet), sm_event_pairing_complete_get_reason(packet));
-                    if (sm_event_pairing_complete_get_status(packet)) break;
-                    if (we_are_central){
-                        printf("Search for LE Counter service.\n");
-                        state = TC_W4_SERVICE_RESULT;
-                        gatt_client_discover_primary_services_by_uuid128(handle_gatt_client_event, connection_handle, le_counter_service_uuid);
-                    }
+
+                case GAP_EVENT_ADVERTISING_REPORT:
+                    handle_advertising_event(packet, size);
                     break;
-                case ATT_EVENT_HANDLE_VALUE_INDICATION_COMPLETE:
-                    break;
-                case ATT_EVENT_CAN_SEND_NOW:
-                    att_server_notify(connection_handle, ATT_CHARACTERISTIC_0000FF11_0000_1000_8000_00805F9B34FB_01_VALUE_HANDLE, (uint8_t *) "Pairing Success!", 16);
+
+                case SM_EVENT_IDENTITY_RESOLVING_SUCCEEDED:
+                    reverse_bd_addr(&packet[5], event_address);
+                    // skip already detected pts
+                    if (memcmp(event_address, current_pts_address, 6) == 0) break;
+                    memcpy(current_pts_address, event_address, 6);
+                    current_pts_address_type =  packet[4];
+                    le_device_db_index       =  little_endian_read_16(packet, 11);
+                    printf("Address resolving succeeded: resolvable address %s, addr type %u\n",
+                        bd_addr_to_str(current_pts_address), current_pts_address_type);
                     break;
                 default:
                     break;
             }
     }
+}
+
+static void use_public_pts_address(void){
+    memcpy(current_pts_address, public_pts_address, 6);
+    current_pts_address_type = public_pts_address_type;                    
+}
+
+static uint16_t value_handle = 1;
+static uint16_t attribute_size = 1;
+
+static int num_rows = 0;
+static int num_lines = 0;
+static const char * rows[100];
+static const char * lines[100];
+static const int width = 70;
+
+static void reset_screen(void){
+    // free memory
+    int i = 0;
+    for (i=0;i<num_rows;i++) {
+        free((void*)rows[i]);
+        rows[i] = NULL;
+    }
+    num_rows = 0;
+    for (i=0;i<num_lines;i++) {
+        free((void*)lines[i]);
+        lines[i] = NULL;
+    }
+    num_lines = 0;
+}
+
+static void print_line(const char * format, ...){
+    va_list argptr;
+    va_start(argptr, format);
+    char * line = malloc(80);
+    vsnprintf(line, 80, format, argptr);
+    va_end(argptr);
+    lines[num_lines] = line;
+    num_lines++;
+}
+
+static void printf_row(const char * format, ...){
+    va_list argptr;
+    va_start(argptr, format);
+    char * row = malloc(80);
+    vsnprintf(row, 80, format, argptr);
+    va_end(argptr);
+    rows[num_rows] = row;
+    num_rows++;
+}
+
+static void print_screen(void){
+
+    // clear screen
+    printf("\e[1;1H\e[2J");
+
+    // full lines on top
+    int i;
+    for (i=0;i<num_lines;i++){
+        printf("%s\n", lines[i]);
+    }
+    printf("\n");
+
+    // two columns
+    int second_half = (num_rows + 1) / 2;
+    for (i=0;i<second_half;i++){
+        int pos = strlen(rows[i]);
+        printf("%s", rows[i]);
+        while (pos < width){
+            printf(" ");
+            pos++;
+        }
+        if (i + second_half < num_rows){
+            printf("|  %s", rows[i+second_half]);
+        }
+        printf("\n");
+    }
+    printf("\n");
+}
+
+static void show_usage(void){
+    uint8_t iut_address_type;
+    bd_addr_t      iut_address;
+    gap_le_get_own_address(&iut_address_type, iut_address);
+
+    reset_screen();
+
+    print_line("--- CLI for SM Tests ---");
+    print_line("PTS: addr type %u, addr %s", current_pts_address_type, bd_addr_to_str(current_pts_address));
+    print_line("IUT: addr type %u, addr %s", iut_address_type, bd_addr_to_str(iut_address));
+    print_line("--------------------------");
+    print_line("GAP: connectable %u, bondable %u", gap_connectable, gap_bondable);
+    print_line("SM: Secure Connections %u", (int) sm_le_secure_connections);
+    print_line("SM: %s, MITM protection %u", sm_io_capabilities, sm_mitm_protection);
+    print_line("SM: key range [%u..16], OOB data: %s", sm_min_key_size, 
+        sm_have_oob_data ? (sm_have_oob_data == 1 ? (const char*) sm_oob_data_A : (const char*) sm_oob_data_B) : "None");
+    print_line("Privacy %u", gap_privacy);
+    printf_row("c/C - connectable off");
+    printf_row("d/D - bondable off/on");
+    printf_row("---");
+    printf_row("1   - enable privacy using random non-resolvable private address");
+    printf_row("2   - clear Peripheral Privacy Flag on PTS");
+    printf_row("3   - set Peripheral Privacy Flag on PTS");
+    printf_row("9   - create HCI Classic connection to addr %s", bd_addr_to_str(public_pts_address));
+    printf_row("a   - enable Advertisements");
+    printf_row("b   - start bonding");
+    printf_row("t   - terminate connection, stop connecting");
+    printf_row("P   - direct connect to PTS");
+    printf_row("---");
+    printf_row("---");
+    printf_row("4   - IO_CAPABILITY_DISPLAY_ONLY");
+    printf_row("5   - IO_CAPABILITY_DISPLAY_YES_NO");
+    printf_row("6   - IO_CAPABILITY_NO_INPUT_NO_OUTPUT");
+    printf_row("7   - IO_CAPABILITY_KEYBOARD_ONLY");
+    printf_row("8   - IO_CAPABILITY_KEYBOARD_DISPLAY");
+    printf_row("m/M - MITM protection off/on");
+    printf_row("s/S - Secure Connections off/on");
+    printf_row("x/X - encryption key range [7..16]/[16..16]");
+    printf_row("y/Y - OOB data off/on/toggle A/B");
+    printf_row("---");
+    printf_row("Ctrl-c - exit");
+
+    print_screen();
+}
+
+static void update_auth_req(void){
+    uint8_t auth_req = 0;
+    if (sm_mitm_protection){
+        auth_req |= SM_AUTHREQ_MITM_PROTECTION;
+    }
+    if (sm_le_secure_connections){
+        auth_req |= SM_AUTHREQ_SECURE_CONNECTION;
+    }
+    if (gap_bondable){
+        auth_req |= SM_AUTHREQ_BONDING;
+    }
+    sm_set_authentication_requirements(auth_req);
+}
+
+static int hexForChar(char c){
+    if (c >= '0' && c <= '9'){
+        return c - '0';
+    } 
+    if (c >= 'a' && c <= 'f'){
+        return c - 'a' + 10;
+    }      
+    if (c >= 'A' && c <= 'F'){
+        return c - 'A' + 10;
+    } 
+    return -1;
+} 
+
+static int ui_process_digits_for_passkey(char buffer){
+    if (buffer < '0' || buffer > '9') {
+        return 0;
+    }
+    printf("%c", buffer);
     fflush(stdout);
+    ui_passkey = ui_passkey * 10 + buffer - '0';
+    ui_digits_for_passkey--;
+    if (ui_digits_for_passkey == 0){
+        printf("\nSending Passkey %u (0x%x)\n", ui_passkey, ui_passkey);
+        sm_passkey_input(handle, ui_passkey);
+    }
+    return 0;
+}
+
+static void ui_process_command(char buffer){
+    int res;
+    switch (buffer){
+        case '1':
+            printf("Enabling non-resolvable private address\n");
+            gap_random_address_set_mode(GAP_RANDOM_ADDRESS_NON_RESOLVABLE);
+            gap_privacy = 1;
+            update_advertisement_params();
+            show_usage();
+            break;
+        case '4':
+            sm_io_capabilities = "IO_CAPABILITY_DISPLAY_ONLY";
+            sm_set_io_capabilities(IO_CAPABILITY_DISPLAY_ONLY);
+            show_usage();
+            break;
+        case '5':
+            sm_io_capabilities = "IO_CAPABILITY_DISPLAY_YES_NO";
+            sm_set_io_capabilities(IO_CAPABILITY_DISPLAY_YES_NO);
+            show_usage();
+            break;
+        case '6':
+            sm_io_capabilities = "IO_CAPABILITY_NO_INPUT_NO_OUTPUT";
+            sm_set_io_capabilities(IO_CAPABILITY_NO_INPUT_NO_OUTPUT);
+            show_usage();
+            break;
+        case '7':
+            sm_io_capabilities = "IO_CAPABILITY_KEYBOARD_ONLY";
+            sm_set_io_capabilities(IO_CAPABILITY_KEYBOARD_ONLY);
+            show_usage();
+            break;
+        case '8':
+            sm_io_capabilities = "IO_CAPABILITY_KEYBOARD_DISPLAY";
+            sm_set_io_capabilities(IO_CAPABILITY_KEYBOARD_DISPLAY);
+            show_usage();
+            break;
+        case '9':
+            printf("Creating HCI Classic Connection to %s\n", bd_addr_to_str(public_pts_address));
+            hci_send_cmd(&hci_create_connection, public_pts_address, hci_usable_acl_packet_types(), 0, 0, 0, 1);
+            break;
+        case 'a':
+            gap_advertisements_enable(1);
+            show_usage();
+            break;
+        case 'b':
+            sm_request_pairing(handle);
+            break;
+        case 'c':
+            gap_connectable = 0;
+            update_advertisement_params();
+            gap_connectable_control(gap_connectable);
+            show_usage();
+            break;
+        case 'C':
+            gap_connectable = 1;
+            update_advertisement_params();
+            gap_connectable_control(gap_connectable);
+            show_usage();
+            break;
+        case 'd':
+            gap_bondable = 0;
+            update_auth_req();
+            show_usage();
+            break;
+        case 'D':
+            gap_bondable = 1;
+            update_auth_req();
+            show_usage();
+            break;
+        case 'm':
+            sm_mitm_protection = 0;
+            update_auth_req();
+            show_usage();
+            break;
+        case 'M':
+            sm_mitm_protection = 1;
+            update_auth_req();
+            show_usage();
+            break;
+        case 'p':
+            res = gap_auto_connection_start(current_pts_address_type, current_pts_address);
+            printf("Auto Connection Establishment to type %u, addr %s -> %x\n", current_pts_address_type, bd_addr_to_str(current_pts_address), res);
+            break;
+        case 's':
+            printf("Disable LE Secure Connections\n");
+            sm_le_secure_connections = false;
+            update_auth_req();
+            break;
+        case 'S':
+            printf("Enable LE Secure Connections\n");
+            sm_le_secure_connections = true;
+            update_auth_req();
+            break;
+        case 't':
+            printf("Terminating connection\n");
+            hci_send_cmd(&hci_disconnect, handle, 0x13);
+            gap_auto_connection_stop_all();
+            gap_connect_cancel();
+            break;
+        case 'x':
+            sm_min_key_size = 7;
+            sm_set_encryption_key_size_range(7, 16);
+            show_usage();
+            break;
+        case 'X':
+            sm_min_key_size = 16;
+            sm_set_encryption_key_size_range(16, 16);
+            show_usage();
+            break; 
+       case 'y':
+            sm_have_oob_data = 0;
+            show_usage();
+            break;
+        case 'Y':
+            if (sm_have_oob_data){
+                sm_have_oob_data = 3 - sm_have_oob_data;
+            } else {
+                sm_have_oob_data = 1;
+            }
+            show_usage();
+            break;
+        default:
+            show_usage();
+            break;
+    }
 }
 
 static void stdin_process(char c){
-    // passkey input
-    if (ui_digits_for_passkey && c >= '0' && c <= '9'){
-        printf("%c", c);
-        fflush(stdout);
-        ui_passkey = ui_passkey * 10 + c - '0';
-        ui_digits_for_passkey--;
-        sm_keypress_notification(connection_handle, SM_KEYPRESS_PASSKEY_DIGIT_ENTERED);
-        if (ui_digits_for_passkey == 0){
-            printf("\n");
-            fflush(stdout);
-            sm_keypress_notification(connection_handle, SM_KEYPRESS_PASSKEY_ENTRY_COMPLETED);
-            sm_passkey_input(connection_handle, ui_passkey);
-         }
+    if (ui_digits_for_passkey){
+        ui_process_digits_for_passkey(c);
         return;
     }
 
-    if (ui_oob_confirm){
-        if (c == ' ') return;
-        ui_oob_nibble = (ui_oob_nibble << 4) | nibble_for_char(c);
-        if ((ui_oob_pos & 1) == 1){
-            sm_oob_peer_confirm[ui_oob_pos >> 1] = ui_oob_nibble;
-            ui_oob_nibble = 0;
-        }
-        ui_oob_pos++;
-        if (ui_oob_pos == 32){
-            ui_oob_confirm = 0;
-            printf("PEER_OOB_CONFIRM: ");
-            printf_hexdump(sm_oob_peer_confirm, 16);
-            fflush(stdout);
-        }
-        return;
-    }
+    ui_process_command(c);
+}
 
-    if (ui_oob_random){
-        if (c == ' ') return;
-        ui_oob_nibble = (ui_oob_nibble << 4) | nibble_for_char(c);
-        if ((ui_oob_pos & 1) == 1){
-            sm_oob_peer_random[ui_oob_pos >> 1] = ui_oob_nibble;
-            ui_oob_nibble = 0;
-        }
-        ui_oob_pos++;
-        if (ui_oob_pos == 32){
-            ui_oob_random = 0;
-            printf("PEER_OOB_RANDOM: ");
-            printf_hexdump(sm_oob_peer_random, 16);
-            fflush(stdout);
-        }
-        return;
-    }
-
-
-    switch (c){
-        case 'a': // accept just works
-            printf("accepting just works\n");
-            sm_just_works_confirm(connection_handle);
-            break;
-        case 'c':
-            printf("CENTRAL: connect to %s\n", bd_addr_to_str(peer_address));
-            gap_connect(peer_address, BD_ADDR_TYPE_LE_PUBLIC);
-            break;
-        case 'd':
-            printf("decline bonding\n");
-            sm_bonding_decline(connection_handle);
-            break;
-        case 'o':
-            printf("receive oob confirm value\n");
-            ui_oob_confirm = 1;
-            ui_oob_pos = 0;
-            break;
-        case 'r':
-            printf("receive oob random value\n");
-            ui_oob_random = 1;
-            ui_oob_pos = 0;
-            break;
-        case 'p':
-            printf("REQUEST_PAIRING\n");
-            sm_request_pairing(connection_handle);
-            break;
-        case 'x':
-            printf("Exit\n");
-            exit(0);
-            break;
+static int get_oob_data_callback(uint8_t addres_type, bd_addr_t addr, uint8_t * oob_data){
+    UNUSED(addres_type);
+    (void)addr;
+    switch(sm_have_oob_data){
+        case 1:
+            memcpy(oob_data, sm_oob_data_A, 16);
+            return 1;
+        case 2:
+            memcpy(oob_data, sm_oob_data_B, 16);
+            return 1;
         default:
-            break;
+            return 0;
     }
-    fflush(stdout);
-    return;
 }
 
 int btstack_main(int argc, const char * argv[]);
 int btstack_main(int argc, const char * argv[]){
+    UNUSED(argc);
+    (void)argv;
+    printf("BTstack LE Peripheral starting up...\n");
 
-    int arg = 1;
-    
-    while (arg < argc) {
-        if(!strcmp(argv[arg], "-a") || !strcmp(argv[arg], "--address")){
-            arg++;
-            we_are_central = sscanf_bd_addr(argv[arg], peer_address);
-            arg++;
-        }
-        if(!strcmp(argv[arg], "-i") || !strcmp(argv[arg], "--iocap")){
-            arg++;
-            sm_io_capabilities = atoi(argv[arg++]);
-        }
-        if(!strcmp(argv[arg], "-r") || !strcmp(argv[arg], "--authreq")){
-            arg++;
-            sm_auth_req = atoi(argv[arg++]);
-        }
-        if(!strcmp(argv[arg], "-f") || !strcmp(argv[arg], "--failure")){
-            arg++;
-            sm_failure = atoi(argv[arg++]);
-        }
-        if(!strcmp(argv[arg], "-o") || !strcmp(argv[arg], "--oob")){
-            arg++;
-            sm_have_oob_data = atoi(argv[arg++]);
-        }
-    }
+    memset(rows, 0, sizeof(char *) * 100);
+    memset(lines, 0, sizeof(char *) * 100);
 
-    // parse command line flags
-
-    printf("Security Managet Tester starting up...\n");
-    log_info("IO_CAPABILITIES: %u", sm_io_capabilities);
-    log_info("AUTH_REQ: %u", sm_auth_req);
-    log_info("HAVE_OOB: %u", sm_have_oob_data);
-    log_info("FAILURE: %u", sm_failure);
-    if (we_are_central){
-        log_info("ROLE: CENTRAL");
-    } else {
-        log_info("ROLE: PERIPHERAL");
-
-        // setup advertisements
-        uint16_t adv_int_min = 0x0030;
-        uint16_t adv_int_max = 0x0030;
-        uint8_t adv_type = 0;
-        bd_addr_t null_addr;
-        memset(null_addr, 0, 6);
-        gap_advertisements_set_params(adv_int_min, adv_int_max, adv_type, 0, null_addr, 0x07, 0x00);
-        gap_advertisements_set_data(adv_data_len, (uint8_t*) adv_data);
-        gap_advertisements_enable(1);
-    }
-
-    // inform about BTstack state
+    // register for HCI Events
     hci_event_callback_registration.callback = &app_packet_handler;
     hci_add_event_handler(&hci_event_callback_registration);
+
+    // register for SM events
+    sm_event_callback_registration.callback = &app_packet_handler;
+    sm_add_event_handler(&sm_event_callback_registration);
 
     // set up l2cap_le
     l2cap_init();
     
-    // setup le device db
+    // Setup SM: Display only
+    sm_init();
+    sm_register_oob_data_callback(get_oob_data_callback);
+    sm_set_io_capabilities(IO_CAPABILITY_NO_INPUT_NO_OUTPUT);
+    sm_io_capabilities =  "IO_CAPABILITY_NO_INPUT_NO_OUTPUT";
+    sm_set_authentication_requirements(SM_AUTHREQ_BONDING);
+
+    sm_set_encryption_key_size_range(sm_min_key_size, 16);
+    sm_test_set_irk(test_irk);
+    sm_test_use_fixed_local_csrk();
+
+    // Setup LE Device DB
     le_device_db_init();
 
-    // 
-    gatt_client_init();
+    // set adv params
+    update_advertisement_params();
 
-    // setup SM io capabilities & auth req
-    sm_init();
-    sm_set_io_capabilities(sm_io_capabilities);
-    sm_set_authentication_requirements(sm_auth_req); 
-    sm_register_oob_data_callback(get_oob_data_callback);
-    sm_register_sc_oob_data_callback(get_sc_oob_data_callback);
+    memcpy(current_pts_address, public_pts_address, 6);
+    current_pts_address_type = public_pts_address_type;
 
-    if (sm_failure < SM_REASON_NUMERIC_COMPARISON_FAILED && sm_failure != SM_REASON_PASSKEY_ENTRY_FAILED){
-        sm_test_set_pairing_failure(sm_failure);
-    }
+    // classic discoverable / connectable
+    gap_connectable_control(0);
+    gap_discoverable_control(1);
 
-    sm_event_callback_registration.callback = &app_packet_handler;
-    sm_add_event_handler(&sm_event_callback_registration);
-
-    // setup ATT server
-    att_server_init(profile_data, att_read_callback, att_write_callback);    
-    att_server_register_packet_handler(app_packet_handler);
-
+    // allow foor terminal input
     btstack_stdin_setup(stdin_process);
-
-    // set one-shot timer
-    heartbeat.process = &heartbeat_handler;
-    btstack_run_loop_set_timer(&heartbeat, HEARTBEAT_PERIOD_MS);
-    btstack_run_loop_add_timer(&heartbeat);
 
     // turn on!
     hci_power_control(HCI_POWER_ON);
     
     return 0;
 }
-
-/* EXAMPLE_END */

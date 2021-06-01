@@ -232,6 +232,10 @@ static int btstack_tlv_posix_read_db(btstack_tlv_posix_t * self){
     if (!self->file){
     	// create truncate file
 	    self->file = fopen(self->db_path,"w+");
+        if (!self->file) {
+            log_error("failed to create file");
+            return -1;
+        }
 	    memset(header, 0, sizeof(header));
 	    strcpy((char *)header, btstack_tlv_header_magic);
 	    fwrite(header, 1, sizeof(header), self->file);
@@ -264,3 +268,17 @@ const btstack_tlv_t * btstack_tlv_posix_init_instance(btstack_tlv_posix_t * self
 	return &btstack_tlv_posix;
 }
 
+/**
+ * Free TLV entries
+ * @param self
+ */
+void btstack_tlv_posix_deinit(btstack_tlv_posix_t * self){
+    // free all entries
+    btstack_linked_list_iterator_t it;
+    btstack_linked_list_iterator_init(&it, &self->entry_list);
+    while (btstack_linked_list_iterator_has_next(&it)){
+        tlv_entry_t * entry = (tlv_entry_t*) btstack_linked_list_iterator_next(&it);
+		btstack_linked_list_iterator_remove(&it);
+		free(entry);
+    }
+}

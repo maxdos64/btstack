@@ -1,6 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import os
 import re
+
+btstack_root = os.path.abspath(os.path.dirname(sys.argv[0]) + '/..')
 
 filetag = '#define BTSTACK_FILE__ "%s"\n'
 filetag_re = '#define BTSTACK_FILE__ \"(.*)\"'
@@ -70,7 +72,7 @@ def update_filename_tag(dir_name, file_name, has_tag):
 
 def get_filename_tag(file_path):
 	basename = os.path.basename(file_path)
-	with open(file_path, "rb") as fin:
+	with open(file_path, "rt") as fin:
 		for line in fin:
 			parts = re.match(filetag_re,line)
 			if not parts:
@@ -79,7 +81,7 @@ def get_filename_tag(file_path):
 			return tag
 	return None
 
-for root, dirs, files in os.walk('../', topdown=True):
+for root, dirs, files in os.walk(btstack_root, topdown=True):
 	dirs[:]  = [d for d in dirs if d not in ignoreFolders]
 	files[:] = [f for f in files if f not in ignoreFiles]
 	for f in files:

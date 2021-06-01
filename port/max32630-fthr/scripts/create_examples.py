@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Create project files for all BTstack embedded examples in WICED/apps/btstack
 
@@ -34,7 +34,7 @@ btstack_root = script_path + '../../'
 
 ## pick correct init script based on your hardware
 # - init script for CC2564B
-cc256x_init_script = 'bluetooth_init_cc2564B_1.6_BT_Spec_4.1.c'
+cc256x_init_script = 'bluetooth_init_cc2564B_1.8_BT_Spec_4.1.c'
 
 subprocess.call("make -f ../Makefile -C src " + cc256x_init_script, shell=True)
 

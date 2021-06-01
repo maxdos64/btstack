@@ -14,10 +14,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 message("${Qt5_DIR}")
 
 find_package(Qt5Core)
-include(FindPythonInterp)
+find_package(FindPython3)
 
 # BTstack Root
-set(BTSTACK_ROOT "../..")
+set(BTSTACK_ROOT "${PROJECT_SOURCE_DIR}/../..")
 message("BTSTACK_ROOT: ${BTSTACK_ROOT}")
 
 # BTstack include
@@ -59,13 +59,14 @@ file(GLOB SOURCES_RIJNDAEL  "${BTSTACK_ROOT}/3rd-party/rijndael/rijndael.c")
 set(SOURCES_POSIX
     ${BTSTACK_ROOT}/platform/posix/btstack_audio_portaudio.c
     ${BTSTACK_ROOT}/platform/posix/btstack_tlv_posix.c
+    ${BTSTACK_ROOT}/platform/posix/hci_dump_posix_fs.c
     ${BTSTACK_ROOT}/platform/posix/wav_util.c
 )
 
 set(SOURCES_CHIPSET
     ${BTSTACK_ROOT}/chipset/bcm/btstack_chipset_bcm.c
     ${BTSTACK_ROOT}/chipset/cc256x/btstack_chipset_cc256x.c
-    bluetooth_init_cc2564C_1.3.c
+    bluetooth_init_cc2564C_1.4.c
     ${BTSTACK_ROOT}/chipset/csr/btstack_chipset_csr.c
 )
 
@@ -124,19 +125,11 @@ IF (WIN32)
 ELSE()
     message("Building for POSIX using libusb")
 
-    # add libusb
-    find_path(LIBUSB_INCLUDE_DIR NAMES libusb.h PATH_SUFFIXES "include" "libusb" "libusb-1.0")
-    find_library(LIBUSB_LIBRARY NAMES usb-1.0 PATH_SUFFIXES "lib" "lib32" "lib64" "dylib")
-    get_filename_component(LIBUSB_LIBRARY_PATH ${LIBUSB_LIBRARY} DIRECTORY)
-    include_directories( ${LIBUSB_INCLUDE_DIR} )
-    link_directories( ${LIBUSB_LIBRARY_PATH} )
-    link_libraries( usb-1.0 )
-
     set(SOURCES_HCI_USB ${BTSTACK_ROOT}/platform/libusb/hci_transport_h2_libusb.c)
     set(SOURCES_STDIN   ${BTSTACK_ROOT}/platform/posix/btstack_stdin_posix.c)
 
     list(APPEND SOURCES_POSIX ${BTSTACK_ROOT}/platform/posix/btstack_network_posix.c)
-    list(APPEND SOURCES_POSIX ${BTSTACK_ROOT}/platform/posix/btstack_uart_block_posix.c)
+    list(APPEND SOURCES_POSIX ${BTSTACK_ROOT}/platform/posix/btstack_block_posix.c)
 ENDIF()
 
 set(SOURCES

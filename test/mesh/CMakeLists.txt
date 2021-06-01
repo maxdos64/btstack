@@ -1,13 +1,24 @@
 cmake_minimum_required (VERSION 3.5)
 project(BTstackMesh)
 
-# add libusb
-find_path(LIBUSB_INCLUDE_DIR NAMES libusb.h PATH_SUFFIXES "include" "libusb" "libusb-1.0")
-find_library(LIBUSB_LIBRARY NAMES usb-1.0 PATH_SUFFIXES "lib" "lib32" "lib64" "dylib")
-get_filename_component(LIBUSB_LIBRARY_PATH ${LIBUSB_LIBRARY} DIRECTORY)
-include_directories( ${LIBUSB_INCLUDE_DIR} )
-link_directories( ${LIBUSB_LIBRARY_PATH} )
-link_libraries( usb-1.0 )
+# enable AddressSanitizer
+set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
+set (CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -fsanitize=address")
+
+# AddressSanitizer for Xcode
+set(CMAKE_XCODE_GENERATE_SCHEME ON)
+set(CMAKE_XCODE_SCHEME_ADDRESS_SANITIZER ON)
+set(CMAKE_XCODE_SCHEME_ADDRESS_SANITIZER_USE_AFTER_RETURN ON)
+
+# fink pkgconfig
+find_package(PkgConfig REQUIRED)
+
+# libusb
+pkg_check_modules(LIBUSB REQUIRED libusb-1.0)
+include_directories(${LIBUSB_INCLUDE_DIRS})
+link_directories(${LIBUSB_LIBRARY_DIRS})
+link_libraries(${LIBUSB_LIBRARIES})
 
 include_directories(../../3rd-party/micro-ecc)
 include_directories(../../3rd-party/tinydir)
@@ -67,9 +78,9 @@ foreach(EXAMPLE_FILE ${EXAMPLES_C})
 	target_link_libraries(${EXAMPLE} btstack)
 endforeach(EXAMPLE_FILE)
 
-# create mesh_message_test target
+## hard-coded tests that use CPPUtest
 
-## hard-coded to use CPPUtest
+message("example mesh_message_test")
 include_directories( /usr/local/include)
 link_directories( /usr/local/lib)
 link_libraries(CppUTest CppUTestExt)
@@ -97,5 +108,41 @@ mock.c
 mesh_message_test.cpp
 )
 
+message("example provisioning_device_test")
+add_executable(provisioning_device_test
+provisioning_device_test.cpp
+mock.c
+../../3rd-party/micro-ecc/uECC.c
+../../3rd-party/rijndael/rijndael.c
+../../src/mesh/mesh_crypto.c
+../../src/mesh/provisioning_device.c
+../../src/mesh/mesh_node.c
+../../src/btstack_crypto.c
+../../src/btstack_util.c
+../../src/btstack_linked_list.c
+../../src/hci_cmd.c
+../../src/hci_dump.c
+)
 
+message("example provisioning_provisioner_test")
+add_executable(provisioning_provisioner_test
+provisioning_provisioner_test.cpp
+mock.c
+../../3rd-party/micro-ecc/uECC.c
+../../3rd-party/rijndael/rijndael.c
+../../src/btstack_crypto.c
+../../src/mesh/provisioning_provisioner.c
+ ../../src/mesh/mesh_crypto.c
+../../src/btstack_crypto.c
+../../src/btstack_util.c
+../../src/btstack_linked_list.c
+../../src/hci_cmd.c
+../../src/hci_dump.c
+)
 
+message("example mesh_configuration_composition_data_message_test")
+add_executable(mesh_configuration_composition_data_message_test
+mesh_configuration_composition_data_message_test.cpp 
+../../src/mesh/mesh_configuration_client.c
+)
+target_link_libraries(mesh_configuration_composition_data_message_test btstack)

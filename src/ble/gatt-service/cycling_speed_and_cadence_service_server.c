@@ -45,7 +45,6 @@
 #include "btstack_util.h"
 #include "bluetooth_gatt.h"
 #include "btstack_debug.h"
-#include "l2cap.h"
 
 #include "ble/gatt-service/cycling_speed_and_cadence_service_server.h"
 
@@ -103,21 +102,21 @@ static uint16_t cycling_speed_and_cadence_service_read_callback(hci_con_handle_t
 	cycling_speed_and_cadence_t * instance = &cycling_speed_and_cadence;
 
 	if (attribute_handle == instance->measurement_client_configuration_descriptor_handle){
-		if (buffer && (buffer_size >= 2)){
+		if (buffer && (buffer_size >= 2u)){
 			little_endian_store_16(buffer, 0, instance->measurement_client_configuration_descriptor_notify);
 		} 
 		return 2;
 	}
 
 	if (attribute_handle == instance->control_point_client_configuration_descriptor_handle){
-		if (buffer && (buffer_size >= 2)){
+		if (buffer && (buffer_size >= 2u)){
 			little_endian_store_16(buffer, 0, instance->control_point_client_configuration_descriptor_indicate);
 		} 
 		return 2;
 	}
 
 	if (attribute_handle == instance->feature_handle){
-		if (buffer && (buffer_size >= 2)){
+		if (buffer && (buffer_size >= 2u)){
 			uint16_t feature = (instance->wheel_revolution_data_supported << CSC_FLAG_WHEEL_REVOLUTION_DATA_SUPPORTED);
 			feature |= (instance->crank_revolution_data_supported << CSC_FLAG_CRANK_REVOLUTION_DATA_SUPPORTED);
 			feature |= (instance->multiple_sensor_locations_supported << CSC_FLAG_MULTIPLE_SENSOR_LOCATIONS_SUPPORTED);
@@ -127,7 +126,7 @@ static uint16_t cycling_speed_and_cadence_service_read_callback(hci_con_handle_t
 	}	
 	
 	if (attribute_handle == instance->sensor_location_value_handle){
-		if (buffer && (buffer_size >= 1)){
+		if (buffer && (buffer_size >= 1u)){
 			buffer[0] = instance->sensor_location;
 		} 
 		return 1;
@@ -138,7 +137,6 @@ static uint16_t cycling_speed_and_cadence_service_read_callback(hci_con_handle_t
 static void cycling_speed_and_cadence_service_csc_measurement_can_send_now(void * context){
 	cycling_speed_and_cadence_t * instance = (cycling_speed_and_cadence_t *) context;
 	if (!instance){
-		// printf("instance is null (cycling_speed_and_cadence_service_csc_measurement_can_send_now)\n");
 		return;
 	}
 	uint8_t flags = (instance->wheel_revolution_data_supported << CSC_FLAG_WHEEL_REVOLUTION_DATA_SUPPORTED);
@@ -153,7 +151,6 @@ static void cycling_speed_and_cadence_service_csc_measurement_can_send_now(void 
 		pos += 4;
 		little_endian_store_16(value, pos, instance->last_wheel_event_time);
 		pos += 2;
-		// printf("send cumulative 0x%04x\n", instance->cumulative_wheel_revolutions);
 	}
 
 	if (instance->crank_revolution_data_supported){
@@ -169,7 +166,6 @@ static void cycling_speed_and_cadence_service_csc_measurement_can_send_now(void 
 static void cycling_speed_and_cadence_service_response_can_send_now(void * context){
 	cycling_speed_and_cadence_t * instance = (cycling_speed_and_cadence_t *) context;
 	if (!instance){
-		// printf("instance is null (cycling_speed_and_cadence_service_response_can_send_now)\n");
 		return;
 	}
 		
@@ -182,7 +178,7 @@ static void cycling_speed_and_cadence_service_response_can_send_now(void * conte
 		case CSC_OPCODE_REQUEST_SUPPORTED_SENSOR_LOCATIONS:{
 			int loc;
 			for (loc = CSC_SERVICE_SENSOR_LOCATION_OTHER; loc < (CSC_SERVICE_SENSOR_LOCATION_RESERVED-1); loc++){
-				if (instance->supported_sensor_locations & (1 << loc)){
+				if (instance->supported_sensor_locations & (1u << loc)){
 					value[pos++] = loc;
 				}
 			}
@@ -216,33 +212,26 @@ static int cycling_speed_and_cadence_service_write_callback(hci_con_handle_t con
 	UNUSED(buffer_size);
 	cycling_speed_and_cadence_t * instance = &cycling_speed_and_cadence;
 
-	// printf("cycling_speed_and_cadence_service_write_callback: attr handle 0x%02x\n", attribute_handle);
 	if (attribute_handle == instance->measurement_client_configuration_descriptor_handle){
-		if (buffer_size < 2){
+		if (buffer_size < 2u){
 			return ATT_ERROR_INVALID_OFFSET;
 		}
 		instance->measurement_client_configuration_descriptor_notify = little_endian_read_16(buffer, 0);
 		instance->con_handle = con_handle;
-		// if (instance->measurement_client_configuration_descriptor_notify){
-		// 		printf("enable notification\n");
-		// }
 		return 0;
 	}
 
 	if (attribute_handle == instance->control_point_client_configuration_descriptor_handle){
-		if (buffer_size < 2){
+		if (buffer_size < 2u){
 			return ATT_ERROR_INVALID_OFFSET;
 		}
 		instance->control_point_client_configuration_descriptor_indicate = little_endian_read_16(buffer, 0);
 		instance->con_handle = con_handle;
-		// if (instance->control_point_client_configuration_descriptor_indicate){
-		// 	printf("enable indication\n");
-		// }
 		return 0;
 	}
 
 	if (attribute_handle == instance->control_point_value_handle){
-		if (instance->control_point_client_configuration_descriptor_indicate == 0) return CYCLING_SPEED_AND_CADENCE_ERROR_CODE_CCC_DESCRIPTOR_IMPROPERLY_CONFIGURED;
+		if (instance->control_point_client_configuration_descriptor_indicate == 0u) return CYCLING_SPEED_AND_CADENCE_ERROR_CODE_CCC_DESCRIPTOR_IMPROPERLY_CONFIGURED;
 		if (instance->request_opcode != CSC_OPCODE_IDLE) return CYCLING_SPEED_AND_CADENCE_ERROR_CODE_PROCEDURE_ALREADY_IN_PROGRESS;
 
 		instance->request_opcode = (csc_opcode_t) buffer[0];
@@ -276,7 +265,6 @@ static int cycling_speed_and_cadence_service_write_callback(hci_con_handle_t con
 				instance->response_value = CSC_RESPONSE_VALUE_OP_CODE_NOT_SUPPORTED;
 				break;
 		}
-		// printf("control point, opcode %02x, response %02x\n", instance->request_opcode, instance->response_value);
 	
 		if (instance->control_point_client_configuration_descriptor_indicate){
 			instance->control_point_callback.callback = &cycling_speed_and_cadence_service_response_can_send_now;
@@ -286,7 +274,6 @@ static int cycling_speed_and_cadence_service_write_callback(hci_con_handle_t con
 		return 0;
 	}
 
-	// printf("heart_rate_service_read_callback, not handeled read on handle 0x%02x\n", attribute_handle);
 	return 0;
 }
 
@@ -305,10 +292,9 @@ void cycling_speed_and_cadence_service_server_init(uint32_t supported_sensor_loc
 	uint16_t start_handle = 0;
 	uint16_t end_handle   = 0xffff;
 	int service_found = gatt_server_get_get_handle_range_for_service_with_uuid16(ORG_BLUETOOTH_SERVICE_CYCLING_SPEED_AND_CADENCE, &start_handle, &end_handle);
-	if (!service_found){
-		// printf("no service found\n");
-		return;
-	}
+	btstack_assert(service_found != 0);
+	UNUSED(service_found);
+
 	// // get CSC Mesurement characteristic value handle and client configuration handle
 	instance->measurement_value_handle = gatt_server_get_value_handle_for_characteristic_with_uuid16(start_handle, end_handle, ORG_BLUETOOTH_CHARACTERISTIC_CSC_MEASUREMENT);
 	instance->measurement_client_configuration_descriptor_handle = gatt_server_get_client_configuration_handle_for_characteristic_with_uuid16(start_handle, end_handle, ORG_BLUETOOTH_CHARACTERISTIC_CSC_MEASUREMENT);
@@ -352,13 +338,12 @@ static void cycling_speed_and_cadence_service_calculate_cumulative_wheel_revolut
 			instance->cumulative_wheel_revolutions = 0xffffffff;
 		} 
 	}
-	// printf("cumulative 0x%04x, wheel revolution change %d\n", instance->cumulative_wheel_revolutions, revolutions_change);
 }
 
 static void cycling_speed_and_cadence_service_calculate_cumulative_crank_revolutions(uint16_t revolutions_change){
 	cycling_speed_and_cadence_t * instance = &cycling_speed_and_cadence;
 	
-	if (instance->cumulative_crank_revolutions <= (0xffff - revolutions_change)){
+	if (instance->cumulative_crank_revolutions <= (0xffffu - revolutions_change)){
 		instance->cumulative_crank_revolutions += revolutions_change;
 	} else {
 		instance->cumulative_crank_revolutions = 0xffff;
@@ -378,7 +363,6 @@ void cycling_speed_and_cadence_service_server_update_values(int32_t wheel_revolu
 	if (instance->measurement_client_configuration_descriptor_notify){
 		instance->measurement_callback.callback = &cycling_speed_and_cadence_service_csc_measurement_can_send_now;
 		instance->measurement_callback.context  = (void*) instance;
-		// printf("cycling_speed_and_cadence_service_server_update_values instance %p, context %p\n", instance, instance->measurement_callback.context);
 		att_server_register_can_send_now_callback(&instance->measurement_callback, instance->con_handle);
 	}
 }

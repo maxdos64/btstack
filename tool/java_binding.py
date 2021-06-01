@@ -1,9 +1,5 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # BlueKitchen GmbH (c) 2014
-
-import glob
-import re
-import sys
 
 import btstack_parser as parser
 
@@ -146,7 +142,7 @@ defines_used = set()
 def java_type_for_btstack_type(type):
     param_types = { '1' : 'int', '2' : 'int', '3' : 'int', '4' : 'long', 'H' : 'int', 'B' : 'BD_ADDR',
                     'D' : 'byte []', 'E' : 'byte [] ', 'N' : 'String' , 'P' : 'byte []', 'A' : 'byte []',
-                    'R' : 'byte []', 'S' : 'byte []', 'Q' : 'byte []',
+                    'R' : 'byte []', 'S' : 'byte []', 'Q' : 'byte []', 'K' : 'byte []',
                     'J' : 'int', 'L' : 'int', 'V' : 'byte []', 'U' : 'BT_UUID',
                     'X' : 'GATTService', 'Y' : 'GATTCharacteristic', 'Z' : 'GATTCharacteristicDescriptor',
                     'T' : 'String'}
@@ -154,7 +150,7 @@ def java_type_for_btstack_type(type):
 
 def size_for_type(type):
     param_sizes = { '1' : 1, '2' : 2, '3' : 3, '4' : 4, 'H' : 2, 'B' : 6, 'D' : 8, 'E' : 240, 'N' : 248, 'P' : 16,
-                    'A' : 31, 'S' : -1, 'V': -1, 'J' : 1, 'L' : 2, 'Q' : 32, 'U' : 16, 'X' : 20, 'Y' : 24, 'Z' : 18, 'T':-1}
+                    'A' : 31, 'S' : -1, 'V': -1, 'J' : 1, 'L' : 2, 'Q' : 32, 'K' : 16, 'U' : 16, 'X' : 20, 'Y' : 24, 'Z' : 18, 'T':-1}
     return param_sizes[type]
 
 def create_command_java(fout, name, ogf, ocf, format, params):
@@ -173,6 +169,7 @@ def create_command_java(fout, name, ogf, ocf, format, params):
      'E' : 'Util.storeBytes(command, offset, %s, 240);',
      'P' : 'Util.storeBytes(command, offset, %s, 16);',
      'Q' : 'Util.storeBytes(command, offset, %s, 32);',
+     'K' : 'Util.storeBytes(command, offset, %s, 16);',
      'A' : 'Util.storeBytes(command, offset, %s, 31);',
      'S' : 'Util.storeBytes(command, offset, %s);', 
      'B' : 'Util.storeBytes(command, offset, %s.getBytes());',
@@ -287,6 +284,7 @@ def create_event(event_name, format, args):
      'N' : 'return Util.getText(data, %u, 248);',
      'D' : 'Util.storeBytes(data, %u, 8);',
      'Q' : 'Util.storeBytes(data, %u, 32);',
+     'K' : 'Util.storeBytes(data, %u, 16);',
      # 'E' : 'Util.storeBytes(data, %u, 240);',
      # 'P' : 'Util.storeBytes(data, %u, 16);',
      # 'A' : 'Util.storeBytes(data, %u, 31);',
@@ -310,7 +308,7 @@ def create_event(event_name, format, args):
             elif f == 'V':
                 access = java_event_getter_data.format(length_name, offset)
                 size = 0
-            elif f in ['D', 'Q']:
+            elif f in ['D', 'Q', 'K']:
                 size = size_for_type(f)
                 access = java_event_getter_data_fixed.format(size, offset)
             else: 
@@ -361,7 +359,7 @@ def create_event_factory(events, subevents, defines):
         if not event_supported(event_name):
             continue
         class_name = class_name_for_event(event_name)
-        print class_name
+        print(class_name)
         subcases += java_event_factory_subevent.format(event_type, class_name)
 
     with open(outfile, 'wt') as fout:
@@ -372,8 +370,8 @@ def create_event_factory(events, subevents, defines):
 # read defines from hci_cmds.h and hci.h
 defines = parser.parse_defines()
 
-# # parse commands
-commands = parser.parse_commands()
+# parse commands
+commands = parser.parse_daemon_commands()
 
 # parse bluetooth.h to get used events
 (events, le_events, event_types) = parser.parse_events()

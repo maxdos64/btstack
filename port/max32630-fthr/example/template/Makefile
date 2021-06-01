@@ -157,6 +157,7 @@ COMMON = \
     hci.o                     \
     hci_cmd.o                 \
     hci_dump.o                \
+    hci_dump_embedded_stdout.o    \
     btstack_uart_block_embedded.o \
     hal_flash_bank_mxc.o      \
     btstack_audio.o           \
@@ -167,6 +168,8 @@ COMMON = \
     
 CLASSIC = \
     btstack_link_key_db_tlv.o \
+    hid_device.o              \
+    hid_host.o                \
     rfcomm.o                  \
     sdp_util.o              \
     spp_server.o            \
@@ -269,7 +272,7 @@ PROJ_CFLAGS+=-DMXC_ASSERT_ENABLE
 # LINKERFILE=$(CMSIS_ROOT)/Device/Maxim/$(TARGET_UC)/Source/GCC/$(TARGET_LC).ld
 
 %.h: %.gatt
-	python ${BTSTACK_ROOT}/tool/compile_gatt.py $< $@
+	python3 ${BTSTACK_ROOT}/tool/compile_gatt.py $< $@
 
 all: spp_and_le_streamer.h
 
@@ -283,7 +286,7 @@ include $(PERIPH_DRIVER_DIR)/periphdriver.mk
 include $(CMSIS_ROOT)/Device/Maxim/$(TARGET_UC)/Source/$(COMPILER)/$(TARGET_LC).mk
 
 # fetch and convert init scripts
-# use bluetooth_init_cc2564B_1.6_BT_Spec_4.1.c
+# use bluetooth_init_cc2564B_1.8_BT_Spec_4.1.c
 include ${BTSTACK_ROOT}/chipset/cc256x/Makefile.inc
 
 rm-compiled-gatt-file:

@@ -35,10 +35,8 @@
  *
  */
 
-/*
- * avrcp_browsing_controller.h
- * 
- * Audio/Video Remote Control Profile Browsing
+/**
+ * @title AVRCP Browsing Target
  *
  */
 
@@ -67,43 +65,44 @@ void avrcp_browsing_target_init(void);
 void avrcp_browsing_target_register_packet_handler(btstack_packet_handler_t callback);
 
 /**
- * @brief Connect to device with a Bluetooth address.
- * @param bd_addr
- * @param ertm_buffer
- * @param ertm_buffer_size
- * @param ertm_config
- * @param avrcp_browsing_cid
- * @returns status
+ * @brief Accept set browsed player
+ * @param browsing_cid
+ * @param uid_counter
+ * @param browsed_player_id
+ * @param response
+ * @param response_size
  */
-uint8_t avrcp_browsing_target_connect(bd_addr_t bd_addr, uint8_t * ertm_buffer, uint32_t size, l2cap_ertm_config_t * ertm_config, uint16_t * avrcp_browsing_cid);
+uint8_t avrcp_browsing_target_send_accept_set_browsed_player(uint16_t browsing_cid, uint16_t uid_counter, uint16_t browsed_player_id, uint8_t * response, uint16_t response_len);
 
 /**
- * @brief Configure incoming connection.
- * @param avrcp_browsing_cid
- * @param ertm_buffer
- * @param ertm_buffer_size
- * @param ertm_config
- * @returns status
+ * @brief Reject set browsed player
+ * @param browsing_cid
+ * @param status
  */
-uint8_t avrcp_browsing_target_configure_incoming_connection(uint16_t avrcp_browsing_cid, uint8_t * ertm_buffer, uint32_t size, l2cap_ertm_config_t * ertm_config);
+uint8_t avrcp_browsing_target_send_reject_set_browsed_player(uint16_t browsing_cid, avrcp_status_code_t status);
 
 /**
- * @brief Decline incoming connection.
- * @param avrcp_browsing_cid
- * @returns status
+ * @brief Send answer to get folder items query on event AVRCP_SUBEVENT_BROWSING_GET_FOLDER_ITEMS. The first byte of this event defines the scope of the query, see avrcp_browsing_scope_t.
+ * @param browsing_cid
+ * @param uid_counter
+ * @param attr_list
+ * @param attr_list_size
  */
-uint8_t avrcp_browsing_target_decline_incoming_connection(uint16_t avrcp_browsing_cid);
-
+uint8_t avrcp_browsing_target_send_get_folder_items_response(uint16_t browsing_cid, uint16_t uid_counter, uint8_t * attr_list, uint16_t attr_list_size);
 
 /**
- * @brief Disconnect from AVRCP target
- * @param avrcp_browsing_cid
- * @returns status
+ * @brief Send answer to get total number of items query on event AVRCP_SUBEVENT_BROWSING_GET_TOTAL_NUM_ITEMS. The first byte of this event defines the scope of the query, see avrcp_browsing_scope_t.
+ * @param browsing_cid
+ * @param uid_counter
+ * @param total_num_items
  */
-uint8_t avrcp_browsing_target_disconnect(uint16_t avrcp_browsing_cid);
+uint8_t avrcp_browsing_target_send_get_total_num_items_response(uint16_t browsing_cid, uint16_t uid_counter, uint32_t total_num_items);
 
-uint8_t avrcp_subevent_browsing_get_folder_items_response(uint16_t browsing_cid, uint16_t uid_counter, uint8_t * attr_list, uint16_t attr_list_size);
-uint8_t avrcp_subevent_browsing_get_total_num_items_response(uint16_t avrcp_browsing_cid, uint16_t uid_counter, uint32_t total_num_items);
+/**
+ * @brief De-Init AVRCP Browsing Controller
+ */
+void avrcp_browsing_target_deinit(void);
+
 /* API_END */
 
 #if defined __cplusplus

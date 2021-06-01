@@ -62,6 +62,9 @@
 #include "hal_led.h"
 #include "hci.h"
 #include "hci_dump.h"
+#include "hci_dump_posix_fs.h"
+#include "hci_transport.h"
+#include "hci_transport_usb.h"
 #include "btstack_stdin.h"
 #include "btstack_audio.h"
 #include "btstack_tlv_posix.h"
@@ -97,8 +100,11 @@ static void local_version_information_handler(uint8_t * packet){
     printf("- Manufacturer 0x%04x\n", manufacturer);
     switch (manufacturer){
         case BLUETOOTH_COMPANY_ID_THE_LINUX_FOUNDATION:
-            printf("Linux Foundation - assume Zephyr hci_usb example running on nRF52xx\n");
+            printf("- Linux Foundation - assume Zephyr hci_usb firmware running on nRF52xx\n");
+            // setup Zephyr chipset support
             hci_set_chipset(btstack_chipset_zephyr_instance());
+            // sm required to setup static random Bluetooth address
+            sm_init();
             break;
         default:
             break;
@@ -111,23 +117,32 @@ static void packet_handler (uint8_t packet_type, uint16_t channel, uint8_t *pack
     if (packet_type != HCI_EVENT_PACKET) return;
     switch (hci_event_packet_get_type(packet)){
         case BTSTACK_EVENT_STATE:
-            if (btstack_event_state_get_state(packet) != HCI_STATE_WORKING) return;
-            gap_local_bd_addr(local_addr);
-            if (using_static_address){
-                memcpy(local_addr, static_address, 6);
-            }
-            printf("BTstack up and running on %s.\n", bd_addr_to_str(local_addr));
-            strcpy(tlv_db_path, TLV_DB_PATH_PREFIX);
-            strcat(tlv_db_path, bd_addr_to_str(local_addr));
-            strcat(tlv_db_path, TLV_DB_PATH_POSTFIX);
-            tlv_impl = btstack_tlv_posix_init_instance(&tlv_context, tlv_db_path);
-            btstack_tlv_set_instance(tlv_impl, &tlv_context);
+            switch (btstack_event_state_get_state(packet)){
+                case HCI_STATE_WORKING:
+                    gap_local_bd_addr(local_addr);
+                    if (using_static_address){
+                        memcpy(local_addr, static_address, 6);
+                    }
+                    printf("BTstack up and running on %s.\n", bd_addr_to_str(local_addr));
+                    strcpy(tlv_db_path, TLV_DB_PATH_PREFIX);
+                    strcat(tlv_db_path, bd_addr_to_str(local_addr));
+                    strcat(tlv_db_path, TLV_DB_PATH_POSTFIX);
+                    tlv_impl = btstack_tlv_posix_init_instance(&tlv_context, tlv_db_path);
+                    btstack_tlv_set_instance(tlv_impl, &tlv_context);
 #ifdef ENABLE_CLASSIC
-            hci_set_link_key_db(btstack_link_key_db_tlv_get_instance(tlv_impl, &tlv_context));
-#endif    
-#ifdef ENABLE_BLE
-            le_device_db_tlv_configure(tlv_impl, &tlv_context);
+                    hci_set_link_key_db(btstack_link_key_db_tlv_get_instance(tlv_impl, &tlv_context));
 #endif
+#ifdef ENABLE_BLE
+                    le_device_db_tlv_configure(tlv_impl, &tlv_context);
+#endif
+                    break;
+                case HCI_STATE_OFF:
+                    btstack_tlv_posix_deinit(&tlv_context);
+                    break;
+                default:
+                    break;
+            }
+            if (btstack_event_state_get_state(packet) != HCI_STATE_WORKING) return;
             break;
         case HCI_EVENT_COMMAND_COMPLETE:
             if (HCI_EVENT_IS_COMMAND_COMPLETE(packet, hci_read_local_version_information)){
@@ -199,8 +214,7 @@ int main(int argc, const char * argv[]){
         hci_transport_usb_set_path(usb_path_len, usb_path);
     }
 
-    // use logger: format HCI_DUMP_PACKETLOGGER, HCI_DUMP_BLUEZ or HCI_DUMP_STDOUT
-
+    // log into file using HCI_DUMP_PACKETLOGGER format
     char pklg_path[100];
     strcpy(pklg_path, "/tmp/hci_dump");
     if (usb_path_len){
@@ -208,8 +222,10 @@ int main(int argc, const char * argv[]){
         strcat(pklg_path, usb_path_string);
     }
     strcat(pklg_path, ".pklg");
+    hci_dump_posix_fs_open(pklg_path, HCI_DUMP_PACKETLOGGER);
+    const hci_dump_t * hci_dump_impl = hci_dump_posix_fs_get_instance();
+    hci_dump_init(hci_dump_impl);
     printf("Packet Log: %s\n", pklg_path);
-    hci_dump_open(pklg_path, HCI_DUMP_PACKETLOGGER);
 
     // init HCI
 	hci_init(hci_transport_usb_instance(), NULL);

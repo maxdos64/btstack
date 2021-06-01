@@ -6,7 +6,8 @@ CORE += \
 	hci_581_active_uart.c \
 	btstack_run_loop_posix.c \
 	btstack_tlv_posix.c \
-	btstack_uart_block_posix.c \
+	btstack_uart_posix.c \
+	hci_dump_posix_fs.c \
 	hci_transport_h4.c \
 	le_device_db_tlv.c \
 	main.c \
@@ -14,6 +15,7 @@ CORE += \
 	btstack_stdin_posix.c \
 
 # examples
+CLASSIC =
 include ${BTSTACK_ROOT}/example/Makefile.inc
 
 CFLAGS  += -g -Wall -Werror \

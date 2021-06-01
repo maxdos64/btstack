@@ -35,8 +35,10 @@
  *
  */
 
+#define BTSTACK_FILE__ "bnep_test.c"
+
 /*
- * bnep_test.c
+ * bnep_test.c : Tool for testig BNEP with PTS
  * based on panu_demo implemented by Ole Reinhardt <ole.reinhardt@kernelconcepts.de>
  */
 
@@ -58,14 +60,14 @@
 #include "btstack_event.h"
 #include "btstack_memory.h"
 #include "btstack_run_loop.h"
-#include "classic/sdp_server.h"
-#include "classic/sdp_util.h"
 #include "hci.h"
 #include "hci_cmd.h"
 #include "hci_dump.h"
 #include "l2cap.h"
-#include "pan.h"
 #include "btstack_stdin.h"
+#include "classic/pan.h"
+#include "classic/sdp_server.h"
+#include "classic/sdp_util.h"
 
 #define HARDWARE_TYPE_ETHERNET 0x0001
 

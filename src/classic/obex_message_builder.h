@@ -35,6 +35,11 @@
  *
  */
 
+/**
+ * OBEX Message Builder
+ *
+ */
+
 #ifndef OBEX_MESSAGE_BUILDER_H
 #define OBEX_MESSAGE_BUILDER_H
 
@@ -43,8 +48,6 @@ extern "C" {
 #endif
  
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "btstack_defines.h"

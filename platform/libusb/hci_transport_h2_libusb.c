@@ -66,6 +66,7 @@
 #include "btstack_debug.h"
 #include "hci.h"
 #include "hci_transport.h"
+#include "hci_transport_usb.h"
 
 // deal with changes in libusb API:
 #ifdef LIBUSB_API_VERSION
@@ -292,7 +293,7 @@ LIBUSB_CALL static void async_callback(struct libusb_transfer *transfer){
         for (c=0;c<SCO_IN_BUFFER_COUNT;c++){
             if (transfer == sco_in_transfer[c]){
                 libusb_free_transfer(transfer);
-                sco_in_transfer[c] = 0;
+                sco_in_transfer[c] = NULL;
                 return;
             }
         }
@@ -301,7 +302,7 @@ LIBUSB_CALL static void async_callback(struct libusb_transfer *transfer){
             if (transfer == sco_out_transfers[c]){
                 sco_out_transfers_in_flight[c] = 0;
                 libusb_free_transfer(transfer);
-                sco_out_transfers[c] = 0;
+                sco_out_transfers[c] = NULL;
                 return;
             }
         }
@@ -440,6 +441,9 @@ static void handle_isochronous_data(uint8_t * buffer, uint16_t size){
                 packet_handler(HCI_SCO_DATA_PACKET, sco_buffer, sco_read_pos);
                 sco_state_machine_init();
                 break;
+			default:
+				btstack_assert(false);
+				break;
         }
     }
 }
@@ -584,23 +588,24 @@ static void usb_process_ts(btstack_timer_source_t *timer) {
 #ifndef HAVE_USB_VENDOR_ID_AND_PRODUCT_ID
 
 // list of known devices, using VendorID/ProductID tuples
-static const uint16_t known_bt_devices[] = {
-    // DeLOCK Bluetooth 4.0
+static const uint16_t known_bluetooth_devices[] = {
+    // BCM20702A0 - DeLOCK Bluetooth 4.0
     0x0a5c, 0x21e8,
-    // Asus BT400
+    // BCM20702A0 - Asus BT400
     0x0b05, 0x17cb,
-    // BCM20702B0 (Generic USB Detuned Class 1 @ 20 MHz)
+    // BCM20702B0 - Generic USB Detuned Class 1 @ 20 MHz
     0x0a5c, 0x22be,
-    // Zephyr e.g nRF52840-PCA10056
+    // nRF5x Zephyr USB HCI, e.g nRF52840-PCA10056
     0x2fe3, 0x0100,
+    0x2fe3, 0x000b,
 };
 
-static int num_known_devices = sizeof(known_bt_devices) / sizeof(uint16_t) / 2;
+static int num_known_devices = sizeof(known_bluetooth_devices) / sizeof(uint16_t) / 2;
 
 static int is_known_bt_device(uint16_t vendor_id, uint16_t product_id){
     int i;
     for (i=0; i<num_known_devices; i++){
-        if (known_bt_devices[i*2] == vendor_id && known_bt_devices[i*2+1] == product_id){
+        if (known_bluetooth_devices[i*2] == vendor_id && known_bluetooth_devices[i*2+1] == product_id){
             return 1;
         }
     }
@@ -692,7 +697,6 @@ static int scan_for_bt_device(libusb_device **devs, int start_index) {
         // The class code (bDeviceClass) is 0xE0 – Wireless Controller. 
         // The SubClass code (bDeviceSubClass) is 0x01 – RF Controller. 
         // The Protocol code (bDeviceProtocol) is 0x01 – Bluetooth programming.
-        // if (desc.bDeviceClass == 0xe0 && desc.bDeviceSubClass == 0x01 && desc.bDeviceProtocol == 0x01){
         if (desc.bDeviceClass == 0xE0 && desc.bDeviceSubClass == 0x01 && desc.bDeviceProtocol == 0x01) {
             return i;
         }
@@ -769,12 +773,21 @@ static int prepare_device(libusb_device_handle * aHandle){
     }
 
 #ifdef ENABLE_SCO_OVER_HCI
-    log_info("claiming interface 1...");
-    r = libusb_claim_interface(aHandle, 1);
-    if (r < 0) {
-        log_error("Error %d claiming interface 1: - disabling SCO over HCI", r);
-    } else {
-        sco_enabled = 1;
+    // get endpoints from interface descriptor
+    struct libusb_config_descriptor *config_descriptor;
+    r = libusb_get_active_config_descriptor(device, &config_descriptor);
+    if (r >= 0){
+        int num_interfaces = config_descriptor->bNumInterfaces;
+        if (num_interfaces > 1) {
+            r = libusb_claim_interface(aHandle, 1);
+            if (r < 0) {
+                log_error("Error %d claiming interface 1: - disabling SCO over HCI", r);
+            } else {
+                sco_enabled = 1;
+            }
+        } else {
+            log_info("Device has only on interface, disabling SCO over HCI");
+        }
     }
 #endif
 
@@ -870,19 +883,61 @@ static void usb_sco_stop(void){
     log_info("usb_sco_stop");
     sco_shutdown = 1;
 
+    // Free SCO transfers already in queue
+    struct libusb_transfer* transfer = handle_packet;
+    struct libusb_transfer* prev_transfer = NULL;
+    while (transfer != NULL) {
+        uint16_t c;
+        bool drop_transfer = false;
+        for (c=0;c<SCO_IN_BUFFER_COUNT;c++){
+            if (transfer == sco_in_transfer[c]){
+                sco_in_transfer[c] = NULL;
+                drop_transfer = true;
+                break;
+            }
+        }
+        for (c=0;c<SCO_OUT_BUFFER_COUNT;c++){
+            if (transfer == sco_out_transfers[c]){
+                sco_out_transfers_in_flight[c] = 0;
+                sco_out_transfers[c] = NULL;
+                drop_transfer = true;
+                break;
+            }
+        }
+        struct libusb_transfer * next_transfer = (struct libusb_transfer *) transfer->user_data;
+        if (drop_transfer) {
+            printf("Drop completed SCO transfer %p\n", transfer);
+            if (prev_transfer == NULL) {
+                // first item
+                handle_packet = (struct libusb_transfer *) next_transfer;
+            } else {
+                // other item
+                prev_transfer->user_data = (struct libusb_transfer *) next_transfer;
+            }
+            libusb_free_transfer(transfer);
+        } else {
+            prev_transfer = transfer;
+        }
+        transfer = next_transfer;
+    }
+
     libusb_set_debug(NULL, LIBUSB_LOG_LEVEL_ERROR);
 
     int c;
     for (c = 0 ; c < SCO_IN_BUFFER_COUNT ; c++) {
-        libusb_cancel_transfer(sco_in_transfer[c]);
+        if (sco_in_transfer[c] != NULL) {
+            libusb_cancel_transfer(sco_in_transfer[c]);
+        }
     }
 
     for (c = 0; c < SCO_OUT_BUFFER_COUNT ; c++){
         if (sco_out_transfers_in_flight[c]) {
             libusb_cancel_transfer(sco_out_transfers[c]);
         } else {
-            libusb_free_transfer(sco_out_transfers[c]);
-            sco_out_transfers[c] = 0;
+            if (sco_out_transfers[c] != NULL) {
+                libusb_free_transfer(sco_out_transfers[c]);
+                sco_out_transfers[c] = 0;
+            }
         }
     }
 
@@ -897,7 +952,7 @@ static void usb_sco_stop(void){
 
         // Cancel all synchronous transfer
         for (c = 0 ; c < SCO_IN_BUFFER_COUNT ; c++) {
-            if (sco_in_transfer[c]){
+            if (sco_in_transfer[c] != NULL){
                 completed = 0;
                 break;
             }
@@ -906,7 +961,7 @@ static void usb_sco_stop(void){
         if (!completed) continue;
 
         for (c=0; c < SCO_OUT_BUFFER_COUNT ; c++){
-            if (sco_out_transfers[c]){
+            if (sco_out_transfers[c] != NULL){
                 completed = 0;
                 break;
             }
@@ -1227,6 +1282,8 @@ static int usb_close(void){
                 doing_pollfds = 0;
             }
 
+            /* fall through */
+
         case LIB_USB_INTERFACE_CLAIMED:
             // Cancel all transfers, ignore warnings for this
             libusb_set_debug(NULL, LIBUSB_LOG_LEVEL_ERROR);
@@ -1254,8 +1311,10 @@ static int usb_close(void){
                     log_info("cancel sco_out_transfers[%u] = %p", c, sco_out_transfers[c]);
                     libusb_cancel_transfer(sco_out_transfers[c]);
                 } else {
-                    libusb_free_transfer(sco_out_transfers[c]);
-                    sco_out_transfers[c] = 0;
+                    if (sco_out_transfers[c] != NULL){
+                        libusb_free_transfer(sco_out_transfers[c]);
+                        sco_out_transfers[c] = 0;
+                    }
                 }
             }
 #endif
@@ -1308,7 +1367,7 @@ static int usb_close(void){
                 if (!completed) continue;
 
                 for (c=0; c < SCO_OUT_BUFFER_COUNT ; c++){
-                    if (sco_out_transfers[c]){
+                    if (sco_out_transfers[c] != NULL){
                         log_info("sco_out_transfers[%u] still active (%p)", c, sco_out_transfers[c]);
                         completed = 0;
                         break;
@@ -1325,11 +1384,20 @@ static int usb_close(void){
 #endif
             log_info("Libusb shutdown complete");
 
+			/* fall through */
+
         case LIB_USB_DEVICE_OPENDED:
             libusb_close(handle);
 
+			/* fall through */
+
         case LIB_USB_OPENED:
             libusb_exit(NULL);
+            break;
+
+		default:
+			btstack_assert(false);
+			break;
     }
 
     libusb_state = LIB_USB_CLOSED;
@@ -1358,7 +1426,7 @@ static int usb_send_cmd_packet(uint8_t *packet, int size){
 
     // submit transfer
     r = libusb_submit_transfer(command_out_transfer);
-    
+
     if (r < 0) {
         usb_command_active = 0;
         log_error("Error submitting cmd transfer %d", r);
@@ -1374,7 +1442,7 @@ static int usb_send_acl_packet(uint8_t *packet, int size){
     if (libusb_state != LIB_USB_TRANSFERS_ALLOCATED) return -1;
 
     // log_info("usb_send_acl_packet enter, size %u", size);
-    
+
     // prepare transfer
     int completed = 0;
     libusb_fill_bulk_transfer(acl_out_transfer, handle, acl_out_addr, packet, size,

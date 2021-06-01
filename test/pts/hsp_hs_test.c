@@ -35,11 +35,11 @@
  *
  */
  
-// *****************************************************************************
-//
-// HSP Headset PTS Test
-//
-// *****************************************************************************
+#define BTSTACK_FILE__ "hsp_hs_test.c"
+
+/*
+ * hsp_hs_test.c : Tool for testig HSP Headset with PTS
+ */ 
 
 #include "btstack_config.h"
 
@@ -63,9 +63,9 @@
 #include "classic/sdp_util.h"
 #include "hci.h"
 #include "hci_cmd.h"
-#include "hsp_hs.h"
 #include "l2cap.h"
-#include "rfcomm.h"
+#include "classic/hsp_hs.h"
+#include "classic/rfcomm.h"
 #include "btstack_stdin.h"
 
 const uint32_t   hsp_service_buffer[150/4]; // implicit alignment to 4-byte memory address

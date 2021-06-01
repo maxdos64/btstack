@@ -4,16 +4,20 @@ CC = g++
 
 BTSTACK_ROOT =  ../..
 
-CFLAGS  = -g -Wall -I.. -I${BTSTACK_ROOT}/src -I${BTSTACK_ROOT}/include
-CFLAGS += -fprofile-arcs -ftest-coverage
-LDFLAGS += -L$(CPPUTEST_HOME)/lib -lCppUTest -lCppUTestExt
+CFLAGS  = -g -Wall -I. -I${BTSTACK_ROOT}/src -I${BTSTACK_ROOT}/include
+
+CFLAGS_COVERAGE = ${CFLAGS} -fprofile-arcs -ftest-coverage
+CFLAGS_ASAN     = ${CFLAGS} -fsanitize=address -DHAVE_ASSERT
+
+LDFLAGS += -lCppUTest -lCppUTestExt
+LDFLAGS_COVERAGE = ${LDFLAGS} -fprofile-arcs -ftest-coverage
+LDFLAGS_ASAN     = ${LDFLAGS} -fsanitize=address
 
 VPATH += ${BTSTACK_ROOT}/src/ble 
 VPATH += ${BTSTACK_ROOT}/src
 VPATH += ${BTSTACK_ROOT}/platform/posix
 
 COMMON = \
-	ad_parser.c                 \
 	btstack_linked_list.c	    \
 	btstack_memory.c			\
 	btstack_memory_pool.c		\
@@ -24,19 +28,32 @@ COMMON = \
 	hci_cmd.c					\
 	hci_dump.c					\
 	
-COMMON_OBJ = $(COMMON:.c=.o)
+COMMON_OBJ_COVERAGE = $(addprefix build-coverage/,$(COMMON:.c=.o))
+COMMON_OBJ_ASAN     = $(addprefix build-asan/,    $(COMMON:.c=.o))
 
-all: ad_parser
+all: build-coverage/ad_parser_test build-asan/ad_parser_test
 
-ad_parser: ${CORE_OBJ} ${COMMON_OBJ} advertising_data_parser.c
-	${CC} ${CORE_OBJ} ${COMMON_OBJ} advertising_data_parser.c ${CFLAGS} ${LDFLAGS} -o $@
+build-%:
+	mkdir -p $@
+
+build-coverage/%.o: %.c | build-coverage
+	${CC} -c $(CFLAGS_COVERAGE) $< -o $@
+
+build-asan/%.o: %.c | build-asan
+	${CC} -c $(CFLAGS_ASAN) $< -o $@
+
+build-coverage/ad_parser_test: ${COMMON_OBJ_COVERAGE} build-coverage/ad_parser_test.o | build-coverage
+	${CC} $^ ${LDFLAGS_COVERAGE} -o $@
+
+build-asan/ad_parser_test: ${COMMON_OBJ_ASAN} build-asan/ad_parser_test.o | build-asan
+	${CC} $^ ${LDFLAGS_ASAN} -o $@
 
 test: all
-	./ad_parser
+	build-asan/ad_parser_test
+
+coverage: all
+	rm -f build-coverage/*.gcda
+	build-coverage/ad_parser_test
 
 clean:
-	rm -f  ad_parser le_central
-	rm -f  *.o
-	rm -rf *.dSYM
-	rm -f *.gcno *.gcda
-
+	rm -rf build-coverage build-asan

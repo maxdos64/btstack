@@ -35,21 +35,20 @@
  *
  */
 
-/*
- *  hci_transport.h
+/**
+ * @title HCI Transport
  *
- *  HCI Transport API -- allows BTstack to use different transport interfaces
- *
- *  Created by Matthias Ringwald on 4/29/09.
+ * The API allows BTstack to use different transport interfaces.
  *
  */
+
 #ifndef HCI_TRANSPORT_H
 #define HCI_TRANSPORT_H
 
-#include <stdint.h>
-#include "btstack_uart_block.h"
-#include "btstack_em9304_spi.h"
+#include "btstack_config.h"
 #include "btstack_defines.h"
+
+#include <stdint.h>
 
 #if defined __cplusplus
 extern "C" {
@@ -128,8 +127,8 @@ typedef struct {
     uint32_t   baudrate_main; // = 0: same as initial baudrate
     int        flowcontrol;   // 
     const char *device_name;
+    int        parity;        // see btstack_uart.h BTSTACK_UART_PARITY
 } hci_transport_config_uart_t;
-
 
 // inline various hci_transport_X.h files
 

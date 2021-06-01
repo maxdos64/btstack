@@ -35,6 +35,10 @@
  *
  */
 
+/**
+ * @title ATT Database Engine
+ *
+ */
 
 #ifndef ATT_DB_H
 #define ATT_DB_H
@@ -83,9 +87,15 @@ extern "C" {
 #define ATT_HANDLE_VALUE_INDICATION     0x1d
 #define ATT_HANDLE_VALUE_CONFIRMATION   0x1e
 
+#define ATT_READ_MULTIPLE_VARIABLE_REQ  0x20
+#define ATT_READ_MULTIPLE_VARIABLE_RSP  0x21
+#define ATT_MULTIPLE_HANDLE_VALUE_NTF   0x23
 
 #define ATT_WRITE_COMMAND                0x52
 #define ATT_SIGNED_WRITE_COMMAND         0xD2
+
+// map ATT ERROR CODES on to att_read_callback length
+#define ATT_READ_ERROR_CODE_OFFSET       0xfe00
 
 // custom BTstack ATT Response Pending for att_read_callback
 #define ATT_READ_RESPONSE_PENDING                 0xffff
@@ -109,6 +119,7 @@ typedef struct att_connection {
     hci_con_handle_t con_handle;
     uint16_t mtu;       // initialized to ATT_DEFAULT_MTU (23), negotiated during MTU exchange
     uint16_t max_mtu;   // local maximal L2CAP_MTU, set to l2cap_max_le_mtu()
+    bool     mtu_exchanged;
     uint8_t  encryption_key_size;
     uint8_t  authenticated;
     uint8_t  authorized;
@@ -306,6 +317,12 @@ uint16_t gatt_server_get_client_configuration_handle_for_characteristic_with_uui
  */
 bool att_is_persistent_ccc(uint16_t handle);
 
+// auto-pts testing, returns response size
+#ifdef ENABLE_BTP
+uint16_t btp_att_get_attributes_by_uuid16(uint16_t start_handle, uint16_t end_handle, uint16_t uuid16, uint8_t * response_buffer, uint16_t response_buffer_size);
+uint16_t btp_att_get_attributes_by_uuid128(uint16_t start_handle, uint16_t end_handle, const uint8_t * uuid128, uint8_t * response_buffer, uint16_t response_buffer_size);
+uint16_t btp_att_get_attribute_value(att_connection_t * att_connection, uint16_t attribute_handle, uint8_t * response_buffer, uint16_t response_buffer_size);
+#endif
 
 #if defined __cplusplus
 }

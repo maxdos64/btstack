@@ -56,6 +56,7 @@ file(GLOB SOURCES_RIJNDAEL  "${BTSTACK_ROOT}/3rd-party/rijndael/rijndael.c")
 set(SOURCES_POSIX
     ${BTSTACK_ROOT}/platform/posix/btstack_audio_portaudio.c
     ${BTSTACK_ROOT}/platform/posix/btstack_tlv_posix.c
+    ${BTSTACK_ROOT}/platform/posix/hci_dump_posix_fs.c
     ${BTSTACK_ROOT}/platform/posix/wav_util.c
 )
 
@@ -115,19 +116,19 @@ IF (WIN32)
 ELSE()
     message("Building for POSIX using libusb")
 
-    # add libusb
-    find_path(LIBUSB_INCLUDE_DIR NAMES libusb.h PATH_SUFFIXES "include" "libusb" "libusb-1.0")
-    find_library(LIBUSB_LIBRARY NAMES usb-1.0 PATH_SUFFIXES "lib" "lib32" "lib64" "dylib")
-    get_filename_component(LIBUSB_LIBRARY_PATH ${LIBUSB_LIBRARY} DIRECTORY)
-    include_directories( ${LIBUSB_INCLUDE_DIR} )
-    link_directories( ${LIBUSB_LIBRARY_PATH} )
-    link_libraries( usb-1.0 )
+    # fink pkgconfig
+    find_package(PkgConfig REQUIRED)
+
+    # libusb
+    pkg_check_modules(LIBUSB REQUIRED libusb-1.0)
+    include_directories(${LIBUSB_INCLUDE_DIRS})
+    link_directories(${LIBUSB_LIBRARY_DIRS})
+    link_libraries(${LIBUSB_LIBRARIES})
 
     set(SOURCES_HCI_USB ${BTSTACK_ROOT}/platform/libusb/hci_transport_h2_libusb.c)
     set(SOURCES_STDIN   ${BTSTACK_ROOT}/platform/posix/btstack_stdin_posix.c)
 
     list(APPEND SOURCES_POSIX ${BTSTACK_ROOT}/platform/posix/btstack_network_posix.c)
-    list(APPEND SOURCES_POSIX ${BTSTACK_ROOT}/platform/posix/btstack_uart_block_posix.c)
 ENDIF()
 
 set(SOURCES

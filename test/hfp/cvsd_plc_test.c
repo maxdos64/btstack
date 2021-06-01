@@ -8,7 +8,7 @@
 #include "CppUTest/TestHarness.h"
 #include "CppUTest/CommandLineTestRunner.h"
 
-#include "btstack_cvsd_plc.h"
+#include "classic/btstack_cvsd_plc.h"
 #include "wav_util.h"
 
 const  int     audio_samples_per_frame = 60;
@@ -161,7 +161,7 @@ static void process_wav_file_with_plc(const char * in_filename, const char * out
     
     while (wav_reader_read_int16(audio_samples_per_frame, audio_frame_in) == 0){
         int16_t audio_frame_out[audio_samples_per_frame];
-        btstack_cvsd_plc_process_data(&plc_state, audio_frame_in, audio_samples_per_frame, audio_frame_out);
+        btstack_cvsd_plc_process_data(&plc_state, false, audio_frame_in, audio_samples_per_frame, audio_frame_out);
         wav_writer_write_int16(audio_samples_per_frame, audio_frame_out);
     } 
     wav_reader_close();

@@ -35,10 +35,8 @@
  *
  */
 
-/*
- * avrcp_browsing_controller.h
- * 
- * Audio/Video Remote Control Profile Browsing
+/**
+ * @title AVRCP Browsing Controller
  *
  */
 
@@ -108,42 +106,6 @@ void avrcp_browsing_controller_init(void);
  * @param callback
  */
 void avrcp_browsing_controller_register_packet_handler(btstack_packet_handler_t callback);
-
-/**
- * @brief Connect to device with a Bluetooth address.
- * @param bd_addr
- * @param ertm_buffer
- * @param ertm_buffer_size
- * @param ertm_config
- * @param avrcp_browsing_cid
- * @returns status
- */
-uint8_t avrcp_browsing_controller_connect(bd_addr_t bd_addr, uint8_t * ertm_buffer, uint32_t size, l2cap_ertm_config_t * ertm_config, uint16_t * avrcp_browsing_cid);
-
-/**
- * @brief Configure incoming connection.
- * @param avrcp_browsing_cid
- * @param ertm_buffer
- * @param ertm_buffer_size
- * @param ertm_config
- * @returns status
- */
-uint8_t avrcp_browsing_controller_configure_incoming_connection(uint16_t avrcp_browsing_cid, uint8_t * ertm_buffer, uint32_t size, l2cap_ertm_config_t * ertm_config);
-
-/**
- * @brief Decline incoming connection.
- * @param avrcp_browsing_cid
- * @returns status
- */
-uint8_t avrcp_browsing_controller_decline_incoming_connection(uint16_t avrcp_browsing_cid);
-
-
-/**
- * @brief Disconnect from AVRCP target
- * @param avrcp_browsing_cid
- * @returns status
- */
-uint8_t avrcp_browsing_controller_disconnect(uint16_t avrcp_browsing_cid);
 
 /**
  * @brief Retrieve a list of media players.
@@ -224,6 +186,11 @@ uint8_t avrcp_browsing_controller_get_item_attributes_for_scope(uint16_t avrcp_b
  * @return status 
  **/
 uint8_t avrcp_browsing_controller_search(uint16_t avrcp_browsing_cid, uint16_t search_str_len, char * search_str);
+
+/**
+ * @brief De-Init AVRCP Browsing Controller
+ */
+void avrcp_browsing_controller_deinit(void);
 
 /* API_END */
 

@@ -6,21 +6,284 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ---
 
-## [Unreleased]
-
-### Fixed
+## Unreleased
 
 ### Added
-- GAP: Detect Secure Connection -> Legacy Connection Downgrade Attack (BIAS)
+### Fixed
+### Changed
+
+## Release v1.4
+
+### Added
+- HCI: `btstack_transport_sco.h` supports SCO over physical PCM/I2S interface (`HAVE_SCO_TRANSPORT`)
+- POSIX: `btstack_transport_sco_i2s_test_bridge.c` implements SCO transport interface for UART-to-I2S test bridge
+- btstack_uart: `btstack_uart_t` interface extends `btstack_uart_block_t`:
+  - support sending and receiving SLIP frames for HCI H5
+  - support odd parity
+  - `hci_transport_h4` and chipset drivers have new functions to provide `btstack_uart_t`
+- btstack_uart_slip_wrapper: wrapper that implements SLIP functionality for existing `btstack_uart_block` drivers.
+- hci_transport: add parity field and pass on to `btstack_uart_t` in h4 and h5
+- GATT Client: Battery Service Client 
+- GATT Client: Device Information Service Client
+- GATT Client: HID-over-GATT (HOG) Client, Report and Boot Host
+- GATT Client: Scan Parameters Service Client 
+- GATT Server: Scan Parameters Service Server
+- GAP: support scan page configuration with `gap_set_page_scan_activity` and `gap_set_page_scan_type`
+- GAP: support sniff subrating with `gap_sniff_subrating_configure`
+- GAP: support QoS setup with `gap_qos_set`
+- AVRCP: new field `button_pressed` in `AVRCP_SUBEVENT_OPERATION`
+- AVRCP: `AVRCP_SUBEVENT_OPERATION` emitted for button release
+- AVRCP Controller: `avrcp_controller_start_press_and_hold_cmd` supports arbitrary device buttons
+- AVRCP Controller: reassemble fragmented AVCTP packets
+- AVDTP: `avdtp_register_media_config_validator` allows to validate media codec configuration
+- A2DP Source: `ENABLE_A2DP_SOURCE_EXPLICIT_CONFIG` disables auto config. requires call to `a2dp_source_set_config_{CODEC}`
+
+### Fixed
+- GAP: calculate IO Cap AuthReq Bondable Mode based on `gap_ssp_set_authentication_requirement` and `gap_set_bondable_mode`
+- GAP: only store link key for SSP if remote side has set bondable in io cap auth requirements 
+- GAP: allow to disable link supervision timeout
+- GAP: fix `gap_connect` after `gap_connect_cancel` 
+- GAP: re-configure advertisements after power cycle
+- HCI: handle start inquiry failure
+- L2CAP: fix create outgoing connection triggered from packet handler on hci disconnect event
+- L2CAP: return unknown mandatory option in config response
+- AVDTP: fix spelling `avdtp_set_preferred_sampling_frequency`
+- AVRCP Target: fix notification changed event
+- HFP: Emit audio connection released on SLC Release, e.g. on remote power off
+- HFP HF: fix audio connection setup if codec negotiation is supported
+- HFP HF: only emit single event for RING and AG Status updates
+- HFP AG: fix audio connection setup for in-band ringtone on incoming connection
 
 ### Changed
+- Port Archive: moved ports that are not recommended for new designs to port/archive folder:
+  - MSP430: the ports used the older community GCC version without 20-bit support needed for code size > 64kB
+  - Broadcom/Cypress H5: uploading PatchRAM is only possible in H4 mode. It's better to also use H4 in general
+  - PIC32-Harmony: the port used Harmony v1 while Harmony v3 has been out since a while
+  - iOS: not supported
+- Run Loop Base: functionality used in most platform run loop implementations
+  - code from `btstack_run_loop_base.c` moved into `btstack_run_loop.c` to minimize changes to build systems
+  - `btstack_run_loop_base.c` is a placeholder and can be removed from build
+- HCI Dump: replace monolithic `hci_dump.c` (with many #ifdefs) into dispatcher with platform-specific implementations:
+  - `posix/hci_dump_posix_fs` - writes binary log file
+  - `posix/hci_dump_stdout` - log to console using printf with local system time
+  - `embedded/hci_dump_embedded_stdout` - log to console using printf
+  - `embedded/hci_dump_segger_stdout` - log to RTT console using `SEGGER_printf`
+  - `embedded/hci_dump_segger_binary` - writes binary log over RTT to host
+- HCI: config I2S for BCM Controllers if `ENABLE_SCO_OVER_PCM`, reduce bit clock to 256/512 kHz
+- btstack_uart_posix: supports SLIP frames and replaces `btstack_uart_block_posix`
+- hci_transport_h5: more performant H5 implementation that requires `btstack_uart_t` driver with SLIP support
+- POSIX Ports: use new `btstack_uart_posix` implementation
+- posix-h5/posix-h5-bcm: use even parity for UART
+- HCI Transport: extract convenience function declaration for h4, h5, em9304_spi, and usb into separate hci_transport_{type}.h
+- GAP: provide Device ID from EIR in GAP_EVENT_INQUIRY_RESULT
+- GAP: only store link key if it allows requested security level
+- GAP: abort SSP pairing if MITM protection required but not possible
+- SM: start pairing as Central for already encrypted connection on Slave Security Request
+- GATT Client: Use ATT_READ_REQUEST for first blob of Read Long Characteristic and Read Long Characteristic Descriptor
+- GATT Server: Allow ATT Read Callback to return custom ATT Error Code
+- Nordic SPP Service Server: use `GATTSERVICE_SUBEVENT_SPP_SERVICE_CONNECTED` and `GATTSERVICE_SUBEVENT_SPP_SERVICE_CONNECTED`
+  events instead of callback, and `RFCOMM_DATA_PACKET` for received data
+- u-blox SPP Service Server: use `GATTSERVICE_SUBEVENT_SPP_SERVICE_CONNECTED` and `GATTSERVICE_SUBEVENT_SPP_SERVICE_CONNECTED`
+  events instead of callback, and `RFCOMM_DATA_PACKET` for received data
+- HID: Move `src/classic/hid.h` into `src` and prefix with `btstack_` to use it with BLE and avoid name clashes
+- HFP: provide acl_handle in events to identify connection
+- HSP AG: emit HSP_SUBEVENT_BUTTON_PRESSED instead of audio connection setup/release
+- Example: use `btstack_event.h` getters instead of direct array access, use enum to compare status codes
+
+## Release v1.3.2
+
+### Added
+- GAP: support for Classic Out-of-Band (OOB) pairing via `gap_ssp_remote_oob_data` with `ENABLE_CLASSIC_OOB_PAIRING`
+- GAP: read local OOB data on start and on call to `gap_ssp_generate_oob_data`, provided via `GAP_EVENT_LOCAL_OOB_DATA`
+- HID Host: add profile, update `hid_host_demo.c` example
+
+### Fixed
+- L2CAP: make handling of HCI disconnect more robust
+- AVDTP: emit stream release for active stream if signaling connection is closed first, e.g. caused by HCI disconnect
+- AVRCP: fix issue when Controller and Target send at the same time
+
+### Changed
+- A2DP, AVDTP: use `a2dp_source_set_config_{TYPE}` and `avdtp_config{TYPE}_store` to avoid large number of parameters
+
+
+## Release v1.3
+
+### Added
+- CC256x: with ENABLE_CC256X_ASSISTED_HFP, HFP enables WBS codec on demand and configures PCM/I2S interface for 8kH/16kHz
+- BCM: with ENABLE_BCM_PCM_WBS, HFP enables WBS codec on demand and configures PCM/I2S interface for 8kH/16kHz
+- SDP Client RFCOMM: add `sdp_client_query_rfcomm_channel_and_name_for_service_class_uuid`
+- HFP: `ENABLE_HFP_AT_MESSAGES` lets HFP emit  `HFP_SUBEVENT_AT_MESSAGE_SENT` and `HFP_SUBEVENT_AT_MESSAGE_RECEIVED`
+- A2DP, AVDTP: provide capabilities and configuration events for A2DP codecs: SBC, MPEG Audio, MPEG AAC, ATRAC
+- A2DP + AVDTP Source: allow to send media packet with `avdtp_source_stream_send_media_packet` and `a2dp_source_stream_send_media_packet`
+- A2DP + AVDTP Source: add `avdtp_source_stream_send_media_payload_rtp` and `a2dp_source_stream_send_media_payload_rtp`
+- A2DP Source: emit `A2DP_SUBEVENT_SIGNALING_CAPABILITIES_COMPLETE`
+- A2DP Source: allow to configure endpoints by calling `a2dp_source_set_config_{TYPE}` during SEP discovery with SBC fallback
+
+### Fixed
+- HCI: keep `le connecting request` on connection complete active, fixes gap_auto_connection_stop() + gap_auto_connection_start()
+- L2CAP: fix packet size check for incoming classic basic channels (regression introduced in v1.2.1)
+- HFP AG/HSP AG: avoid connecting to remote service with same role
+- A2DP Source: support multiple Stream Endpoints with different Media Codec types
+- A2DP Source: emit codec configure event with reconfigure flag set on reconfigure
+- GATT Compiler: support multiple instances of the same service
+
+### Changed
+- GAP: provide Link Type parameter to incoming connection filter for `gap_register_classic_connection_filter`
+- HFP/GOEP Client/AVDTP/A2DP: return `SDP_SERVICE_NOT_FOUND` if no suitable SDP record is found
+- AVDTP Source: `avdtp_source_stream_send_media_payload` includes SBC Header and was deprecated
+- AVDTP/A2DP: use `avdtp_channel_mode_t` in `A2DP_SUBEVENT_SIGNALING_MEDIA_CODEC_SBC_CONFIGURATION`
+- A2DP: fix events and use `a2dp_cid`, `local_seid,` `remote_seid` field names in A2DP sub-events
+- GATT Client: Skip MTU exchange after MTU exchange on ATT Server
+- Ports: STM32-F103RB Nucleo + CC256x port removed
+- ESP32: enabled HFP Wide-Band Speech, disable classic secure connections in HSP/HFP demos
+
+
+## Release v1.2.1
+
+### Fixed
+- L2CAP: use connection handle for channel lookups
+- L2CAP: forward data only in open state
+
+### Changed
+- L2CAP: check packet size against local mtu for classic basic channels
+
+
+## Release v1.2
+
+### Fixed
+- L2CAP: trigger pairing for outgoing LE Data Channels if security level insufficient
+- SM: fix update of sc flag for re-encrypted connection in peripheral role
+- SM: send security request on re-connect if bonded and `ENABLE_LE_PROACTIVE_AUTHENTICATION` is defined
+- ESP32: fix audio sink driver
+
+### Added
+- GAP: `gap_delete_bonding` removes device from LE Resolving List and from discards LE bonding information
+- GATT Client: delete bonding information if re-encryption fails and `ENABLE_LE_PROACTIVE_AUTHENTICATION` is not defined
+- GATT Client: gatt_client_set_required_security_level() allows to set required minimum security level for all GATT requests
+- SM: emit events for re-encryption started/complete when bonding information is available
+
+### Changed
+- AVRCP Controller: allow to send multiple absolute volume commands without waiting for response. 
+- GAP: replaced `ENABLE_LE_CENTRAL_AUTO_ENCRYPION` with `ENABLE_LE_PROACTIVE_AUTHENTICATION`
+
+
+## Changes October 2020
+
+### Fixed
+- AVDTP Initiator: avoid use of remote seid for stream endpoint lookup, fixes issue with two connected devices 
+- AVDTP Source: buffer for SBC media codec information got discarded, leading to invalid Set Configuration command in second connection
+- SM: only trigger Cross-Transport Key Derivation (CTKD) when bonding is enabled
+- SM: set LinkKey flag to request CTKD if enabled
+- SM: store CTKD key with Public Identity Address
+- SM: only allow CTKD to overwrite existing link key if derived key has same or higher authentication
+- SM: start SMP Timeout when sending Security Request
+- HFP HF: fix response to AG Codec Selection while waiting for OK of parallel command
+- HCI: fix reject of LE remote connection param request via HCI
+
+### Added
+- GAP: add `gap_get_link_key_for_bd_addr`
+- GAP: add `gap_bonded` to check if bonding information is available for active connection
+- SM: support h7 for CTKD
+
+### Changed
+- SM: Cross-Transport Key Derivation requires `ENABLE_CROSS_TRANSPORT_KEY_DERIVATION` now
+- SM: block connection if encryption fails for bonded devices as Central
+- SM: support pairing as Central after failed re-ecnryption
+
+
+## Release v1.1
+
+### Fixed
+- AVRCP/AVCTP: report AVRCP 1.6 and AVCTP 1.4 in SDP record
+
+### Added
+
+### Changed
+
+
+## Changes September 2020
+
+### Fixed
+- HFP: fix parsing of ranges e.g. in +CIND responses
+- AVDTP, AVRCP: fix bugs due to transaction id overrun
+- A2DP Source: fix issues with stream configuration by sink
+- hci_dump: fix tv_us calculation for non-posix / embedded systems with binary output
+
+### Added
+- `btstack_ring_buffer`: add `btstack_ring_buffer_reset` to reset it to initial state/empty
+- GAP: Support for address resolution of resolvable private addresses by Controller with `ENABLE_LE_PRIVACY_ADDRESS_RESOLUTION`
+
+### Changed
+- AVDTP, AVRCP, HSP: schedule SDP query, avoids avoids 'command disallowed' if SDP client is busy
+- HSP, HFP: allow to configure usable SCO packet types
+- cc256x: update CC256xC init script to v1.4
+- A2DP Source: use Get All Capabilities if supported by remote get Delay Reporting capability
+
+## Changes August 2020
+
+### Fixed
+- ESP32: fix authentication for incoming Secure Connections
+- AVDTP: Fix forwarding of Delay reports
+- STM32-F4Discovery: fix pan_lwip_http_server by increasing HCI_ACL_PAYLOAD_SIZE
+- tool/create_packet_log: basic support for 16-bit Unicode log files from Windows
+ 
+### Added
+- `btstack_run_loop_base`: added `btstack_run_loop_base_dump_timer`
+- GAP: request role change for classic connection via `gap_request_role`
+- GAP: LE Whitelist API with `gap_le_whitelist_x` with x = add, remove, clear and new `gap_connect_with_whitelist`
+- SDP Client: add sdp_client_register_query_callback() allows to register query request instead of polling sdp_client_ready()
+- BNEP lwIP: add `bnep_lwip_connect` to establish BNEP connection and manage lwIP network interface
+- New `btstack_linked_queue` utility, a linked list-based queue with first-in-first-out semantics and constant time enqueue/dequeue operations
+- btstack_tlv_posix: add `btstack_tlv_posix_deinit`
+- New `btpclient` for use with [auto-pts project](https://github.com/intel/auto-pts)
+
+### Changed
+- GAP: treat AES-CCM encrypted connection as mutually authenticated (BIAS)
+- GAP: 'gap_auto_connect_x' API deprecated. Please direclty manage LE Whitelist with `gap_le_whitelist_*` functions and call `gap_connect_with_whitelist` instead
+- example/hid_host_demo: try to become master for incoming connections
+- btstack_run_loop: use btstack_assert instead of local while(true)
+- att_db_util: allow to reset att_db via `att_db_util_init`
+
+## Changes July 2020
+
+### Fixed
+- AVDTP: fix invalid response for Get Capabilities request if Delay Reporting was supported
+- AVDTP: handle concurrent signaling establishment with reject and retry
+
+### Added
+- example/hid_host_demo: support reconnect from HID device
+- Crypto: support software AES128 for AES-CCM operations
+- AVRCP: introduced AVRCP_FEATURE_MASK_* as alternative to avrcp_controller_supported_feature_t and avrcp_target_supported_feature_t enums
+- btstack_audio: add set_volume() to sink and set_gain() to source interfaces, minimal volume control for portaudio playback
+- AVDTP: renamed definition of supported features from AVDTP_SOURCE_SF_ and AVDTP_SINK_SF_ to AVDTP_SOURCE_FEATURE_MASK_ and AVDTP_SINK_FEATURE_MASK_ respectively
+- GAP: Provide gap_get_role to query master/slave role for HCI connection handle
+- GAP: Provide gap_pin_code_response_binary to use binary data as PIN, e.g. for pairing with Nintendo Wii Remote
+
+### Changed
+- GAP: set minimum required encryption key size for Classic connections back from 16 to 7, matching the Core spec
+
+
+## Changes June 2020
+
+### Fixed
+- HFP: Fix parsing of empty fields, e.g. phone number in +CLCC and other AT commands
+- SM: Fix validation of confirm value for secure connection Passkey entry
+- AVRCP: handle concurrent signaling establishment with reject and retry
+
+### Added
+- GAP: Detect Secure Connection -> Legacy Connection Downgrade Attack by remote features and actual encryption type (BIAS) 
+- GAP: Mutual authentication: request authentication after Classic connection got encrypted (BIAS)
+- Windows port for Dialog DA14585 connected via serial port
+
+## Changes
+- CVSD PLC: treat zero frames as good and allow to mark data as bad, e.g. if reported by Controller as erroneous
 
 ## Changes May 2020
 
 ### Fixed
 - hfp_hf, hsp_hs: use eSCO params in accept sco connection only for incoming eSCO connections
 - pbap_client: fix PBAP UUID len on connect message
-- sm: fix secure connection pairing as peripheral when local user confirmation happens after remote one
+- SM: fix secure connection pairing as peripheral when local user confirmation happens after remote one
 - A2DP Source: only connect to remote sink stream endpoints
 - btstack_hal_flash_memory: fix write of 0xff bytes to simulated flash
 - hsp_hs: fix disconnect if audio not connected
@@ -31,7 +294,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - GAP: gap_set_security_level sets required security level for incoming and outgoing connections
 - cc256x: allow to specify power vector for each modulation type
 - FreeRTOS: btstack_run_loop_freertos_trigger_exit allows to request run loop exit
-- sm: support LE Secure Connections Only mode with sm_set_secure_connections_only_mode
+- SM: support LE Secure Connections Only mode with sm_set_secure_connections_only_mode
 - GAP: enable BR/EDR Secure Connections if supported, add gap_secure_connections_enable
 
 ### Changed
@@ -82,7 +345,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - hid_host_mode: allow sniff mode
 
 ### Added
-- port/qt-usb and port/qt-h4: integrate BTstack Qt run loop for Unix- and Win32-based Qt application connected to Bluetooth module via H4 over serial port or USB.
+- port/qt-usb and port/qt-h4: integrate BTstack Qt run loop for Unix- and Win32-based Qt application connected to Bluetooth module via H4 over serial port or USB
 
 
 ## Changes January 2020
@@ -100,7 +363,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - ATT Server: validate request pdu length
 
 ### Changed
-- btstack_crypto: update AES-CMAC implementation to access all message bytes sequentially
+- Crypto: update AES-CMAC implementation to access all message bytes sequentially
 
 
 ## Changes December 2019
@@ -177,7 +440,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - SM: generate local nonce for confirm value in JW+NC+PK in Secure Connections Responder role
 
 ### Added
-- `btstack_run_loop_base`: portable implementation of timer and data source managment as base for platform specific implementations
+- `btstack_run_loop_base`: portable implementation of timer and data source management as base for platform specific implementations
 
 ## Changed
 - FreeRTOS: use xQueueCreateStatic (static variant of xQueueCreate) if available for static memory-only setups

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Delete project files for all BTstack embedded examples in local port/esp32 folder
 
@@ -22,12 +22,12 @@ for file in os.listdir(examples_embedded):
     if not file.endswith(".c"):
         continue
     example = file[:-2]
-    apps_folder = apps_btstack + example + "/"
+    apps_folder = apps_btstack + "example/" + example + "/"
     if os.path.exists(apps_folder):
         shutil.rmtree(apps_folder)
     print("- %s" % example)
 
 print("Deleting example folder")
-examples_folder = apps_btstack + "/examples"
+examples_folder = apps_btstack + "/example"
 if os.path.exists(examples_folder):
     shutil.rmtree(examples_folder)

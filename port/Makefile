@@ -12,13 +12,9 @@
 
 SUBDIRS =  \
 			arduino \
-			daemon \
-			ez430-rf2560 \
 			libusb \
 			libusb-intel \
 			max32630-fthr \
-			msp-exp430f5438-cc2564b \
-			msp430f5229lp-cc2564b \
 			mtk \
 			posix-h4 \
 			posix-h4-atwilc3000 \
@@ -26,16 +22,20 @@ SUBDIRS =  \
 			posix-h4-da14585 \
 			posix-h4-zephyr \
 			posix-h5 \
-			posix-h5-bcm \
 			samv71-xplained-atwilc3000 \
-			stm32-f103rb-nucleo \
 			stm32-f4discovery-cc256x \
 			stm32-l073rz-nucleo-em9304 \
 
 EXCLUDED = \
+			daemon \
+			ez430-rf2560 \
+			msp-exp430f5438-cc2564b \
+			msp430f5229lp-cc2564b \
 			pic32-harmony/app.X \
+			stm32-f103rb-nucleo \
+			posix-h5-bcm \
 			ios \
-			wiced \
+			wiced-h5 \
 			windows-h4 \
 			windows-winusb \
 
@@ -45,7 +45,7 @@ subdirs:
 	  $(MAKE) -C $$dir; \
 	done
 	echo Building daemon
-	cd daemon ; ./bootstrap.sh ; make
+	cd daemon ; ./bootstrap.sh ; ./configure ; make
 
 clean:
 	echo Cleaning all ports
@@ -53,4 +53,4 @@ clean:
 	  $(MAKE) -C $$dir clean; \
 	done
 	echo Cleaning daemon
-	cd daemon ; make clean
+	cd daemon ; ./clean.sh

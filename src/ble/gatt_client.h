@@ -35,6 +35,10 @@
  *
  */
 
+/**
+ * @title GATT Client
+ *
+ */
 
 #ifndef btstack_gatt_client_h
 #define btstack_gatt_client_h
@@ -148,9 +152,6 @@ typedef struct gatt_client{
     btstack_packet_handler_t write_without_response_callback;
 
     hci_con_handle_t con_handle;
-    
-    uint8_t   address_type;
-    bd_addr_t address;
 
     uint16_t          mtu;
     gatt_client_mtu_t mtu_state;
@@ -187,11 +188,14 @@ typedef struct gatt_client{
 
     btstack_timer_source_t gc_timeout;
 
-#ifdef ENABLE_GATT_CLIENT_PAIRING
     uint8_t  security_counter;
-    uint8_t  wait_for_pairing_complete;
+    uint8_t  wait_for_authentication_complete;
     uint8_t  pending_error_code;
-#endif
+
+    bool     reencryption_active;
+    uint8_t  reencryption_result;
+
+    gap_security_level_t security_level;
 
 } gatt_client_t;
 
@@ -230,6 +234,19 @@ typedef struct {
  * @brief Set up GATT client.
  */
 void gatt_client_init(void);
+
+/**
+ * @brief Set minimum required security level for GATT Client
+ * @note  The Bluetooth specification makes the GATT Server responsible to check for security.
+ *        This allows an attacker to spoof an existing device with a GATT Servers, but skip the authentication part.
+ *        If your application is exchanging sensitive data with a remote device, you would need to manually check
+ *        the security level before sending/receive such data.
+ *        With level > 0, the GATT Client triggers authentication for all GATT Requests and defers any exchange
+ *        until the required security level is established.
+ *        gatt_client_request_can_write_without_response_event does not trigger authentication
+ *  @pram level, default LEVEL_0 (no encryption required)
+ */
+void gatt_client_set_required_security_level(gap_security_level_t level);
 
 /** 
  * @brief MTU is available after the first query has completed. If status is equal to ERROR_CODE_SUCCESS, it returns the real value, otherwise the default value ATT_DEFAULT_MTU (see bluetooth.h). 
@@ -425,7 +442,7 @@ uint8_t gatt_client_read_value_of_characteristics_by_uuid16(btstack_packet_handl
 uint8_t gatt_client_read_value_of_characteristics_by_uuid128(btstack_packet_handler_t callback, hci_con_handle_t con_handle, uint16_t start_handle, uint16_t end_handle, uint8_t * uuid128);
 
 /** 
- * @brief Reads the long characteristic value using the characteristic's value handle. The value will be returned in several blobs. For each blob, an le_characteristic_value_event_t with type set to GATT_EVENT_CHARACTERISTIC_VALUE_QUERY_RESULT and updated value offset will be generated and passed to the registered callback. The gatt_complete_event_t with type set to GATT_EVENT_QUERY_COMPLETE, mark the end of read.
+ * @brief Reads the long characteristic value using the characteristic's value handle. The value will be returned in several blobs. For each blob, an le_characteristic_value_event_t with type set to GATT_EVENT_LONG_CHARACTERISTIC_VALUE_QUERY_RESULT and updated value offset will be generated and passed to the registered callback. The gatt_complete_event_t with type set to GATT_EVENT_QUERY_COMPLETE, mark the end of read.
  * @param  callback   
  * @param  con_handle
  * @param  characteristic 
@@ -436,7 +453,7 @@ uint8_t gatt_client_read_value_of_characteristics_by_uuid128(btstack_packet_hand
 uint8_t gatt_client_read_long_value_of_characteristic(btstack_packet_handler_t callback, hci_con_handle_t con_handle, gatt_client_characteristic_t  *characteristic);
 
 /** 
- * @brief Reads the long characteristic value using the characteristic's value handle. The value will be returned in several blobs. For each blob, an le_characteristic_value_event_t with type set to GATT_EVENT_CHARACTERISTIC_VALUE_QUERY_RESULT and updated value offset will be generated and passed to the registered callback. The gatt_complete_event_t with type set to GATT_EVENT_QUERY_COMPLETE, mark the end of read.
+ * @brief Reads the long characteristic value using the characteristic's value handle. The value will be returned in several blobs. For each blob, an le_characteristic_value_event_t with type set to GATT_EVENT_LONG_CHARACTERISTIC_VALUE_QUERY_RESULT and updated value offset will be generated and passed to the registered callback. The gatt_complete_event_t with type set to GATT_EVENT_QUERY_COMPLETE, mark the end of read.
  * @param  callback   
  * @param  con_handle
  * @param  characteristic_value_handle 
@@ -447,7 +464,7 @@ uint8_t gatt_client_read_long_value_of_characteristic(btstack_packet_handler_t c
 uint8_t gatt_client_read_long_value_of_characteristic_using_value_handle(btstack_packet_handler_t callback, hci_con_handle_t con_handle, uint16_t characteristic_value_handle);
 
 /** 
- * @brief Reads the long characteristic value using the characteristic's value handle. The value will be returned in several blobs. For each blob, an le_characteristic_value_event_t with type set to GATT_EVENT_CHARACTERISTIC_VALUE_QUERY_RESULT and updated value offset will be generated and passed to the registered callback. The gatt_complete_event_t with type set to GATT_EVENT_QUERY_COMPLETE, mark the end of read.
+ * @brief Reads the long characteristic value using the characteristic's value handle. The value will be returned in several blobs. For each blob, an le_characteristic_value_event_t with type set to GATT_EVENT_LONG_CHARACTERISTIC_VALUE_QUERY_RESULT and updated value offset will be generated and passed to the registered callback. The gatt_complete_event_t with type set to GATT_EVENT_QUERY_COMPLETE, mark the end of read.
  * @param  callback   
  * @param  con_handle
  * @param  characteristic_value_handle

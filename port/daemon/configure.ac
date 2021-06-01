@@ -42,7 +42,7 @@ case "$host_os" in
         BTSTACK_DEVICE_NAME_DB_INSTANCE="btstack_device_name_db_corefoundation_instance"
         UNIX_SOCKETS=yes
         HCI_USB_LIB=libusb
-        UART_BLOCK=posix
+        UART_DRIVER=posix
         ;;
     mingw*)
         echo "Building on mingw32"
@@ -54,7 +54,7 @@ case "$host_os" in
         # BTSTACK_DEVICE_NAME_DB_INSTANCE="btstack_device_name_db_memory_instance"
         UNIX_SOCKETS=no
         HCI_USB_LIB=winusb
-        UART_BLOCK=windows
+        UART_DRIVER=block_windows
         ;;
     *)
         btstack_run_loop_SOURCES="btstack_run_loop_posix.o"
@@ -64,7 +64,7 @@ case "$host_os" in
         # BTSTACK_DEVICE_NAME_DB_INSTANCE="btstack_device_name_db_fs_instance"
         UNIX_SOCKETS=yes
         HCI_USB_LIB=libusb
-        UART_BLOCK=posix
+        UART_DRIVER=posix
     ;;
 esac
 
@@ -132,12 +132,12 @@ echo
 rm -f btstack_config.h
 echo "//"                                                  >> btstack_config.h
 echo "// btstack_config.h"                                 >> btstack_config.h
-echo "// created by configure for BTstack "                >> btstack_config.h
+echo "// created by configure for BTstack"                 >> btstack_config.h
 echo "//" `date`                                           >> btstack_config.h
 echo "//"                                                  >> btstack_config.h
 echo                                                       >> btstack_config.h
-echo "#ifndef __BTSTACK_CONFIG"                            >> btstack_config.h
-echo "#define __BTSTACK_CONFIG"                            >> btstack_config.h
+echo "#ifndef BTSTACK_CONFIG_H"                            >> btstack_config.h
+echo "#define BTSTACK_CONFIG_H"                            >> btstack_config.h
 echo                                                       >> btstack_config.h
 
 echo "// Port related features"                            >> btstack_config.h
@@ -149,26 +149,26 @@ if test "x$UNIX_SOCKETS" == xyes; then
 fi
 echo                                                       >> btstack_config.h
 
-# todo: HAVE -> ENABLE in features below
-
-# echo "#define ENABLE_LE_PERIPHERAL"                      >> btstack_config.h
 echo "// BTstack features that can be enabled"             >> btstack_config.h
 echo "#define ENABLE_BLE"                                  >> btstack_config.h
-echo "#define ENABLE_LE_CENTRAL"                           >> btstack_config.h
-echo "#define ENABLE_LE_SECURE_CONNECTIONS"                >> btstack_config.h
-echo "#define ENABLE_GATT_CLIENT_PAIRING"                  >> btstack_config.h
 echo "#define ENABLE_CLASSIC"                              >> btstack_config.h
+echo "#define ENABLE_GATT_CLIENT_PAIRING"                  >> btstack_config.h
+echo "#define ENABLE_LE_CENTRAL"                           >> btstack_config.h
+echo "#define ENABLE_LE_PERIPHERAL"                        >> btstack_config.h
+echo "#define ENABLE_LE_SECURE_CONNECTIONS"                >> btstack_config.h
 echo "#define ENABLE_LOG_ERROR"                            >> btstack_config.h
 echo "#define ENABLE_LOG_INFO "                            >> btstack_config.h
+echo "#define ENABLE_MICRO_ECC_FOR_LE_SECURE_CONNECTIONS"  >> btstack_config.h
+echo "#define ENABLE_SOFTWARE_AES128"                      >> btstack_config.h
+echo "#define ENABLE_PRINTF_HEXDUMP"                       >> btstack_config.h
 echo "#define ENABLE_RFCOMM"                               >> btstack_config.h
 echo "#define ENABLE_SDP"                                  >> btstack_config.h
-echo "#define ENABLE_SDP_DES_DUMP"                         >> btstack_config.h
-echo "#define ENABLE_MICRO_ECC_FOR_LE_SECURE_CONNECTIONS"  >> btstack_config.h
 echo                                                       >> btstack_config.h
 
 echo "// BTstack configuration. buffers, sizes, .."        >> btstack_config.h
 echo "#define HCI_ACL_PAYLOAD_SIZE 1021"                   >> btstack_config.h
-echo "#define NVM_NUM_DEVICE_DB_ENTRIES 20"                >> btstack_config.h
+echo "#define NVM_NUM_LINK_KEYS         20"                >> btstack_config.h
+echo "#define NVM_NUM_DEVICE_DB_ENTRIES 16"                >> btstack_config.h
 echo                                                       >> btstack_config.h
 
 echo "// Daemon configuration" >> btstack_config.h
@@ -184,7 +184,7 @@ if test "x$HCI_TRANSPORT" = xUSB; then
         USB_SOURCES+=" btstack_chipset_intel_firmware.c"
     fi
 else
-    UART_SOURCES=btstack_uart_block_$UART_BLOCK.o
+    UART_SOURCES=btstack_uart_$UART_DRIVER.o
     echo "#define HAVE_TRANSPORT_H4" >> btstack_config.h
     echo "#define UART_DEVICE \"$UART_DEVICE\"" >> btstack_config.h
     echo "#define UART_SPEED $UART_SPEED" >> btstack_config.h

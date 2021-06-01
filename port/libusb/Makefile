@@ -1,14 +1,14 @@
 # Makefile for libusb based examples
 BTSTACK_ROOT ?= ../..
 
-CORE += main.c btstack_stdin_posix.c btstack_tlv_posix.c
+CORE += main.c btstack_stdin_posix.c btstack_tlv_posix.c hci_dump_posix_fs.c
 
 COMMON += hci_transport_h2_libusb.c btstack_run_loop_posix.c le_device_db_tlv.c btstack_link_key_db_tlv.c wav_util.c btstack_network_posix.c
 COMMON += btstack_audio_portaudio.c btstack_chipset_zephyr.c rijndael.c
 
 include ${BTSTACK_ROOT}/example/Makefile.inc
 
-CFLAGS  += -g -std=c99 -Wall -Wmissing-prototypes -Wstrict-prototypes -Wshadow -Wunused-parameter -Wredundant-decls -Wsign-compare
+CFLAGS  += -g -std=c99 -Wall -Wmissing-prototypes -Wstrict-prototypes -Wshadow -Wunused-parameter -Wredundant-decls -Wsign-compare -Wswitch-default
 # CFLAGS += -Werror
 # CFLAGS += -pedantic
 
@@ -41,14 +41,9 @@ EXAMPLES += csr_set_bd_addr
 csr_set_bd_addr: ${CORE_OBJ} ${COMMON_OBJ} btstack_chipset_csr.o csr_set_bd_addr.o
 	${CC} $^ ${CFLAGS} ${LDFLAGS} -o $@
 
-
 # use pkg-config for portaudio
 # CFLAGS  += $(shell pkg-config portaudio-2.0 --cflags) -DHAVE_PORTAUDIO
 # LDFLAGS += $(shell pkg-config portaudio-2.0 --libs)
-
-# hard coded flags for portaudio in /usr/local/lib
-# CFLAGS  += -I/usr/local/include -DHAVE_PORTAUDIO
-# LDFLAGS += -L/sw/lib -lportaudio -Wl,-framework,CoreAudio -Wl,-framework,AudioToolbox -Wl,-framework,AudioUnit -Wl,-framework,Carbon
 
 clean_src:
 	rm -rf * ${BTSTACK_ROOT}/src/*.o
