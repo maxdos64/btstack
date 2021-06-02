@@ -47,6 +47,9 @@
 
 #include "btstack_config.h"
 #include "btstack_defines.h"
+#include "btstack_uart_block.h"
+#include "btstack_chipset.h"
+#include "btstack_em9304_spi.h"
 
 #include <stdint.h>
 

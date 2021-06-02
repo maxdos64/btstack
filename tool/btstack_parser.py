@@ -185,6 +185,7 @@ def parse_commands(camel_case=True):
 def parse_daemon_commands(camel_case=True):
     global btstack_root
     opcodes = parse_opcodes(camel_case)
+    print(daemon_cmds_c_path)
     return my_parse_commands(btstack_root + '/' + daemon_cmds_c_path, opcodes, camel_case)
 
 def print_opcode_enum(commands):

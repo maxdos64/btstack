@@ -221,6 +221,7 @@ typedef uint8_t sm_key_t[16];
 #define GAP_INQUIRY_START                      0x5e
 #define GAP_INQUIRY_STOP                       0x5f
 
+
 // GAP LE      0x60  
 #define GAP_LE_SCAN_START           0x60
 #define GAP_LE_SCAN_STOP            0x61

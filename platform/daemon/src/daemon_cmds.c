@@ -296,8 +296,8 @@ const hci_cmd_t gap_le_set_scan_parameters = {
 };
 
 /**
- * @param peer_address
  * @param peer_address_type
+ * @param peer_address
  */
 const hci_cmd_t gap_le_connect_cmd = {
     DAEMON_OPCODE_GAP_LE_CONNECT, "1B"
@@ -323,7 +323,7 @@ const hci_cmd_t gap_le_connect_cancel_cmd = {
  * @note own_address_type is used from gap_random_address_set_mode
  */
 const hci_cmd_t gap_le_advertisements_set_params_cmd = {
-OPCODE(OGF_BTSTACK, GAP_LE_ADVERTISEMENTS_SET_PARAMS), "2211B11"
+DAEMON_OPCODE_GAP_LE_ADVERTISEMENTS_SET_PARAMS, "2211B11"
 };
 
 /**
@@ -332,14 +332,14 @@ OPCODE(OGF_BTSTACK, GAP_LE_ADVERTISEMENTS_SET_PARAMS), "2211B11"
  * @note '00:00:00:00:00:00' in advertising_data will be replaced with actual bd addr
  */
 const hci_cmd_t gap_le_advertisements_set_data_cmd = {
-OPCODE(OGF_BTSTACK, GAP_LE_ADVERTISEMENTS_SET_DATA), "LA"
+DAEMON_OPCODE_GAP_LE_ADVERTISEMENTS_SET_DATA, "LA"
 };
 
 /**
  * @param enabled
  */
 const hci_cmd_t gap_le_advertisements_enable_cmd = {
-OPCODE(OGF_BTSTACK, GAP_LE_ADVERTISEMENTS_ENABLE), "1"
+DAEMON_OPCODE_GAP_LE_ADVERTISEMENTS_ENABLE, "1"
 };
 
 
@@ -348,21 +348,21 @@ OPCODE(OGF_BTSTACK, GAP_LE_ADVERTISEMENTS_ENABLE), "1"
  * @param io_capability
  */
 const hci_cmd_t gap_ssp_set_io_capability_cmd = {
-OPCODE(OGF_BTSTACK, GAP_SSP_SET_IO_CAPABILITY), "1"
+DAEMON_OPCODE_GAP_SSP_SET_IO_CAPABILITY, "1"
 };
 
 /**
  * @param boolean
  */
 const hci_cmd_t gap_ssp_set_authentication_requirement_cmd = {
-OPCODE(OGF_BTSTACK, GAP_SSP_SET_AUTHENTICATION_REQUIREMENT), "1"
+DAEMON_OPCODE_GAP_SSP_SET_AUTHENTICATION_REQUIREMENT, "1"
 };
 
 /**
  * @param boolean
  */
 const hci_cmd_t gap_ssp_set_auto_accept_cmd = {
-OPCODE(OGF_BTSTACK, GAP_SSP_SET_AUTO_ACCEPT), "1"
+DAEMON_OPCODE_GAP_SSP_SET_AUTO_ACCEPT, "1"
 };
 
 /**
@@ -370,7 +370,7 @@ OPCODE(OGF_BTSTACK, GAP_SSP_SET_AUTO_ACCEPT), "1"
  * @param bd_addr (48)
  */
 const hci_cmd_t gap_ssp_confirmation_response_cmd = {
-	OPCODE(OGF_BTSTACK, GAP_SSP_CONFIRMATION_RESPONSE), "B"
+DAEMON_OPCODE_GAP_SSP_CONFIRMATION_RESPONSE, "B"
 };
 
 /**
@@ -378,7 +378,7 @@ const hci_cmd_t gap_ssp_confirmation_response_cmd = {
  * @param bd_addr (48)
  */
 const hci_cmd_t gap_ssp_confirmation_negative_cmd = {
-	OPCODE(OGF_BTSTACK, GAP_SSP_CONFIRMATION_NEGATIVE), "B"
+	DAEMON_OPCODE_GAP_SSP_CONFIRMATION_NEGATIVE, "B"
 };
 
 /**
@@ -387,42 +387,42 @@ const hci_cmd_t gap_ssp_confirmation_negative_cmd = {
  * @param passkey in [0..999999]
  */
 const hci_cmd_t gap_ssp_passkey_response_cmd = {
-    OPCODE(OGF_BTSTACK, GAP_SSP_PASSKEY_RESPONSE), "B4"
+    DAEMON_OPCODE_GAP_SSP_PASSKEY_RESPONSE, "B4"
 };
 
 /**
  * @param local_name
  */
 const hci_cmd_t gap_set_local_name_cmd = {
-OPCODE(OGF_BTSTACK, GAP_SET_LOCAL_NAME), "N"
+DAEMON_OPCODE_GAP_SET_LOCAL_NAME, "N"
 };
 
 /**
  *
  */
 const hci_cmd_t gap_delete_all_link_keys_cmd = {
-OPCODE(OGF_BTSTACK, GAP_DELETE_ALL_LINK_KEYS), ""
+DAEMON_OPCODE_GAP_DELETE_ALL_LINK_KEYS, ""
 };
 
 /**
  * @param inquiry_interval
  */
 const hci_cmd_t gap_inquiry_start_cmd = {
-OPCODE(OGF_BTSTACK, GAP_INQUIRY_START), "1"
+DAEMON_OPCODE_GAP_INQUIRY_START, "1"
 };
 
 /**
  *
  */
 const hci_cmd_t gap_inquiry_stop_cmd = {
-OPCODE(OGF_BTSTACK, GAP_INQUIRY_STOP), ""
+DAEMON_OPCODE_GAP_INQUIRY_STOP, ""
 };
 
 /**
  * @param boolean
  */
 const hci_cmd_t gap_connectable_control_cmd = {
-OPCODE(OGF_BTSTACK, GAP_CONNECTABLE_CONTROL), "1"
+DAEMON_OPCODE_GAP_CONNECTABLE_CONTROL, "1"
 };
 
 /**
@@ -642,5 +642,5 @@ const hci_cmd_t sm_passkey_input_cmd = {
  * @param con_handle
  */
 const hci_cmd_t sm_request_pairing_cmd = {
-OPCODE(OGF_BTSTACK, SM_REQUEST_PAIRING), "H"
+DAEMON_OPCODE_SM_REQUEST_PAIRING, "H"
 };
