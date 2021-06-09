@@ -342,6 +342,13 @@ const hci_cmd_t gap_le_advertisements_enable_cmd = {
 DAEMON_OPCODE_GAP_LE_ADVERTISEMENTS_ENABLE, "1"
 };
 
+/**
+ * @param advertising_data_length
+ * @param advertising_data (max 31 octets)
+ */
+const hci_cmd_t gap_le_scan_response_set_data_cmd = {
+DAEMON_OPCODE_GAP_LE_SCAN_RESPONSE_SET_DATA, "LS"
+};
 
 
 /**
@@ -388,6 +395,21 @@ const hci_cmd_t gap_ssp_confirmation_negative_cmd = {
  */
 const hci_cmd_t gap_ssp_passkey_response_cmd = {
     DAEMON_OPCODE_GAP_SSP_PASSKEY_RESPONSE, "B4"
+};
+
+/**
+ * @param device_class
+ */
+const hci_cmd_t gap_set_class_of_device_cmd = {
+DAEMON_OPCODE_GAP_SET_CLASS_OF_DEVICE, "4"
+};
+
+/**
+ * @param advertising_data_length
+ * @param advertising_data
+ */
+const hci_cmd_t gap_set_extended_inquiry_response_cmd = {
+DAEMON_OPCODE_GAP_SET_EXTENDED_INQUIRY_RESPONSE, "2S"
 };
 
 /**

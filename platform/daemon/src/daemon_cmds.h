@@ -92,6 +92,7 @@ typedef enum {
     DAEMON_OPCODE_GAP_LE_ADVERTISEMENTS_SET_PARAMS = DAEMON_OPCODE(GAP_LE_ADVERTISEMENTS_SET_PARAMS),
 	 DAEMON_OPCODE_GAP_LE_ADVERTISEMENTS_SET_DATA = DAEMON_OPCODE(GAP_LE_ADVERTISEMENTS_SET_DATA),
 	 DAEMON_OPCODE_GAP_LE_ADVERTISEMENTS_ENABLE = DAEMON_OPCODE(GAP_LE_ADVERTISEMENTS_ENABLE),
+    DAEMON_OPCODE_GAP_LE_SCAN_RESPONSE_SET_DATA = DAEMON_OPCODE(GAP_LE_SCAN_RESPONSE_SET_DATA),
     DAEMON_OPCODE_GAP_LE_CONNECT = DAEMON_OPCODE(GAP_LE_CONNECT),
     DAEMON_OPCODE_GAP_LE_CONNECT_CANCEL = DAEMON_OPCODE(GAP_LE_CONNECT_CANCEL),
     DAEMON_OPCODE_GATT_DISCOVER_PRIMARY_SERVICES = DAEMON_OPCODE(GATT_DISCOVER_ALL_PRIMARY_SERVICES),
@@ -124,6 +125,8 @@ typedef enum {
     DAEMON_OPCODE_SM_PASSKEY_INPUT = DAEMON_OPCODE(SM_PASSKEY_INPUT),
 	 DAEMON_OPCODE_GAP_SSP_CONFIRMATION_NEGATIVE =  DAEMON_OPCODE(GAP_SSP_CONFIRMATION_NEGATIVE),
 	 DAEMON_OPCODE_GAP_SSP_PASSKEY_RESPONSE      =  DAEMON_OPCODE(GAP_SSP_PASSKEY_RESPONSE),
+     DAEMON_OPCODE_GAP_SET_EXTENDED_INQUIRY_RESPONSE = DAEMON_OPCODE(GAP_SET_EXTENDED_INQUIRY_RESPONSE),
+     DAEMON_OPCODE_GAP_SET_CLASS_OF_DEVICE       = DAEMON_OPCODE(GAP_SET_CLASS_OF_DEVICE),
 	 DAEMON_OPCODE_GAP_SET_LOCAL_NAME            =  DAEMON_OPCODE(GAP_SET_LOCAL_NAME),
 	 DAEMON_OPCODE_GAP_DELETE_ALL_LINK_KEYS      =  DAEMON_OPCODE(GAP_DELETE_ALL_LINK_KEYS),
 	 DAEMON_OPCODE_GAP_INQUIRY_START             =  DAEMON_OPCODE(GAP_INQUIRY_START),
@@ -183,6 +186,7 @@ extern const hci_cmd_t gap_le_connect_cancel_cmd;
 extern const hci_cmd_t gap_le_advertisements_set_params_cmd;
 extern const hci_cmd_t gap_le_advertisements_set_data_cmd;
 extern const hci_cmd_t gap_le_advertisements_enable_cmd;
+extern const hci_cmd_t gap_le_scan_response_set_data_cmd;
 
 
 extern const hci_cmd_t gap_ssp_set_io_capability_cmd;
@@ -192,6 +196,8 @@ extern const hci_cmd_t gap_ssp_confirmation_response_cmd;
 extern const hci_cmd_t gap_ssp_confirmation_negative_cmd;
 extern const hci_cmd_t gap_ssp_passkey_response_cmd;
 
+extern const hci_cmd_t gap_set_extended_inquiry_response_cmd;
+extern const hci_cmd_t gap_set_class_of_device_cmd;
 extern const hci_cmd_t gap_set_local_name_cmd;
 extern const hci_cmd_t gap_delete_all_link_keys_cmd;
 extern const hci_cmd_t gap_inquiry_start_cmd;

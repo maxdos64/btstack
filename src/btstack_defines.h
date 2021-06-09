@@ -215,6 +215,8 @@ typedef uint8_t sm_key_t[16];
 #define GAP_SSP_CONFIRMATION_RESPONSE          0x54
 #define GAP_SSP_CONFIRMATION_NEGATIVE          0x55
 #define GAP_SSP_PASSKEY_RESPONSE               0x56
+#define GAP_SET_EXTENDED_INQUIRY_RESPONSE      0x59
+#define GAP_SET_CLASS_OF_DEVICE                0x5a
 #define GAP_CONNECTABLE_CONTROL               0x5b
 #define GAP_SET_LOCAL_NAME                     0x5c
 #define GAP_DELETE_ALL_LINK_KEYS               0x5d
@@ -231,6 +233,8 @@ typedef uint8_t sm_key_t[16];
 #define GAP_LE_ADVERTISEMENTS_SET_PARAMS  0x65
 #define GAP_LE_ADVERTISEMENTS_SET_DATA  0x66
 #define GAP_LE_ADVERTISEMENTS_ENABLE  0x67
+#define GAP_LE_SCAN_RESPONSE_SET_DATA 0x68
+
 
 // GATT (Client) 0x70
 #define GATT_DISCOVER_ALL_PRIMARY_SERVICES                       0x70
